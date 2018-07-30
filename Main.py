@@ -92,6 +92,7 @@ ComputerBlastSpeed = 1 #The speed of the computers blasts
 ComputerMoveSpeed = 1 #How fast the computer can move up and down
 ComputerPosition = 400 #The current position of the computer
 PlayerPosition = 400 #The current position of the player
+UnlockedLevel = 1 #The hardest level the player has unlocked
 
 
 class Blast: #The class for the player's energy blasts
@@ -181,7 +182,27 @@ class Boom(): #The class for explosions
         self.frame += 0.5 #Skips to the next frame once every other run of this function
         if self.frame > 30: #If it has reached the end of the animation then delete this explosion
             Explosions.pop(0)
-
+            
+class LevelButton():
+    def __init__(self,row,column,unlocked):
+        self.row = row
+        self.column = column
+        self.level = (column+1)+(10*row)
+        self.unlocked = (unlocked>=self.level)
+        myfont = pygame.font.SysFont('Arial Black', 25,True) #Set a font to arial black size 75 and bold
+        if self.unlocked:
+            textsurface = myfont.render(str(self.level), False, Cyan) #Make a text 'Button ' using that font with the color Cyan
+        else:
+            textsurface = myfont.render(str(self.level), False, Red) #Make a text 'Button ' using that font with the color Cyan
+        Screen.blit(textsurface,((50*column)+125,50*row)) #Draw the texts on the screen
+        pygame.display.update()
+    def update(self):
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        if (50*self.column)+125 <= mouse[0] <= (50*self.column)+150 and 50*self.row <= mouse[1] <= (50*self.row)+25 and self.unlocked and click[0] == 1:
+                ComputerLevel = self.level
+                GameLoop() 
+        
 def kill(): #Kills the program
     SettingsFile.close()
     pygame.quit()
@@ -267,7 +288,7 @@ def MenuLoop(): #The function that runs the main menu
             singleback = optionfont.render("singleplayer", False, Cyan)
             singlefront = optionfont.render("singleplayer", False, Red)
             if click[0] == 1:
-                GameLoop()
+                ChooseLevel()
         else:
             singleback = optionfont.render("singleplayer", False, Red)
             singlefront = optionfont.render("singleplayer", False, Cyan)
@@ -310,6 +331,20 @@ def MenuLoop(): #The function that runs the main menu
             if event.type == pygame.QUIT: #If the user clicked the close button
                 kill() #Close the window and stop the program
         Clock.tick(30)
+        
+def ChooseLevel():
+    Levels = []
+    for row in range(10):
+        for column in range(10):
+            Levels.append(LevelButton(row,column,UnlockedLevel))
+    choosing = True
+    while choosing:
+        for button in Levels:
+            button.update()
+        for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
+            if event.type == pygame.QUIT: #If the user clicked the close button
+                kill() #Close the window and stop the program
+        Clock.tick(10)
 
 def GameLoop(): #The function that runs the game
     ReloadCounter = 0
@@ -436,10 +471,7 @@ def GameEventHandler(): #Handles the events during the game
                     pygame.mixer.Sound.play(lazer) #Play the lazer blast sound effect
                     Reloading = True #Set reloading to true
             if event.key == pygame.K_ESCAPE:
-                Blasts.clear()
-                EBlasts.clear()
-                Explosions.clear()
-                MenuLoop()
+                Pause()
             if event.key == pygame.K_UP and PlayerPosition > 0:
                 PlayerPosition -= PlayerSpeed
             if event.key == pygame.K_DOWN and PlayerPosition < screen_height-150:
@@ -480,6 +512,35 @@ def DrawScreen(): #Draws the screen
             phealth -= phealth
         hindex += 1
     pygame.display.update() #Updates the screen so the user can see the new screen
+    
+def Pause():
+    paused = True
+    font = pygame.font.SysFont('Arial Black', 50,True) #Set a font to arial black size 50 and bold
+    back = font.render("Back To Game", False, DarkOrange)
+    menu = font.render(" Main Menu  ", False, DarkOrange)
+    Screen.blit(back,(200,250))
+    Screen.blit(menu,(200,350))
+    pygame.display.update()
+    while paused:
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        if 200 < mouse[0] < 654 and 270 < mouse[1] < 305: #If the mouse is hovering over the back to game button
+            if click[0] == 1: #If the player clicks
+                paused = False #Unpause the game
+        if 225 < mouse[0] < 555 and 370 < mouse[1] < 405: #If the mouse is hovering over the back to game button
+            if click[0] == 1: #If the player clicks
+                #Return to the main menu
+                Blasts.clear()
+                EBlasts.clear()
+                Explosions.clear()
+                MenuLoop()
+        for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
+            if event.type == pygame.QUIT: #If the user clicked the close button
+                kill() #Close the window and stop the program
+            if event.type == pygame.KEYDOWN: #If a key is being pressed
+                if event.key == pygame.K_ESCAPE: #If that key is escape
+                    paused = False #Unpause the game
+        Clock.tick(10)
     
 def SettingsLoop():
     inSettings = True
