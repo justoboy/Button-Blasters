@@ -242,17 +242,19 @@ def Intro(): #The intro animation
     pygame.mixer.music.load(Directory+'\Sounds\Menu\intro.wav') #Load the intro music
     pygame.mixer.music.play(loops=0, start=0_0) #Play the intro music
     if wait(3.75): #If the player does not hit space while waiting
-        pygame.draw.rect(Screen, Blue, [0,400,125,150])
+        pygame.draw.rect(Screen, Blue, [0,425,100,70]) #Draws the player's mech
+        pygame.draw.polygon(Screen, Blue, ((0,490),(50,490),(30,510),(0,510)))
         Screen.blit(MechImg,(0,400)) #Draw a blue mech
         pygame.display.update()
         if wait(6.75):
-            pygame.draw.rect(Screen, DarkRed, [screen_width-125,400,125,150])
+            pygame.draw.rect(Screen, DarkRed, [screen_width-100,425,100,70]) #Draws the computer's mech
+            pygame.draw.polygon(Screen, DarkRed, ((screen_width,490),(screen_width-50,490),(screen_width-30,510),(screen_width,510)))
             Screen.blit(EMechImg,(screen_width-150,400)) #Draw a red mech
             pygame.display.update() 
             if wait(4):
-                Img =  pygame.transform.scale(BlastImg, (35, 35)) #Draw a blue blast 
+                Img =  pygame.transform.scale(BlastImg, (70, 35)) #Draw a blue blast 
                 Screen.blit(Img,(225,462))
-                Img =  pygame.transform.scale(EBlastImg, (35, 35))  #Draw a red blast
+                Img =  pygame.transform.scale(EBlastImg, (70, 35))  #Draw a red blast
                 Screen.blit(Img,(screen_width-200,462))
                 Img = pygame.transform.scale(Explosion1[25],(52,52)) #Draw an explosion
                 Screen.blit(Img,(350,453))
