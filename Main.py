@@ -9,6 +9,7 @@ from random import randint
 from time import sleep
 import pickle
 import math
+import Player
 try:
     import pygame
 except ModuleNotFoundError:
@@ -21,7 +22,7 @@ pygame.init()
 pygame.font.init()
 screen_width = 800 #The width of the game window
 screen_height = 600 #The height of the game window
-Black = (0,0,0)
+Black = (0,0,0) #A bunch of colors
 White = (255,255,255)
 Red = (255,0,0)
 DarkRed = (150,0,0)
@@ -43,8 +44,8 @@ Pink = (255,0,255)
 DarkOrange = (255,85,0)
 Orange = (255,170,0)
 Yellow = (255,255,0)
-Colors = [Black,White,Red,DarkRed,Green,DarkGreen,LightGreen,GreenBlue,BlueGreen,Blue,DarkBlue,LightBlue,Cyan,Indigo,Purple,Pink,HotPink,DarkOrange,Orange,Yellow]
-HealthBarColors = [Red,DarkOrange,Orange,Yellow,LightGreen,Green,GreenBlue,DarkGreen,DarkBlue,BlueGreen,Blue,Indigo,Purple,Pink,HotPink,BluePurple,LightBlue,Cyan,BabyBlue,White]
+Colors = [Black,White,Red,DarkRed,Green,DarkGreen,LightGreen,GreenBlue,BlueGreen,Blue,DarkBlue,BluePurple,LightBlue,Cyan,BabyBlue,Indigo,Purple,Pink,HotPink,DarkOrange,Orange,Yellow] #A list of all those colors
+HealthBarColors = [Red,DarkOrange,Orange,Yellow,LightGreen,Green,GreenBlue,DarkGreen,DarkBlue,BlueGreen,Blue,Indigo,Purple,Pink,HotPink,BluePurple,LightBlue,Cyan,BabyBlue,White] #A list of the colors of the health bars
 Icon = pygame.image.load(Directory+'\Images\Icon.png') #Loads the icon for the game window
 pygame.display.set_icon(Icon) #Sets the game window icon
 MechImg = pygame.image.load(Directory+'\Images\Mech.png') #Loads the players mech image
@@ -72,18 +73,12 @@ Music = [] #List of music for the game
 for filename in os.listdir(Directory+'\Sounds\Music'): #Searches the music folder for music and puts it in the music list
     if filename.endswith(".wav"): 
         Music.append(Directory+'\Sounds\Music\\'+filename)
-FireSpeed = 1 #How many times per second the player can shoot
-BlastSpeed = 1 #How fast the player's blasts travel
-BlastDmg = 1 #How much damage the player's blast cause and how big they are
-PlayerHealth = 10 #How much health the player has left
-PlayerSpeed = 10 #How fast the player can move up and down
 Reloading = False #If the player's mech is reloading
 ComputerReloading = False #If the computer's mech is reloading
 SettingsFile = open(Directory+'\Data\Settings.dat','rb')
 Settings = pickle.load(SettingsFile)
 SettingsFile = open(Directory+'\Data\Settings.dat','wb')
 EnemyColor = Black #The background color of the computers mech
-PlayerColor = Blue #The background color of the player's mech
 ComputerLevel = 1 #The difficulty of the computer
 ComputerHealth = 10 #The health of the computer
 ComputerDmg = 1 #The damage the computer deals
@@ -92,7 +87,8 @@ ComputerBlastSpeed = 1 #The speed of the computers blasts
 ComputerMoveSpeed = 1 #How fast the computer can move up and down
 ComputerPosition = 400 #The current position of the computer
 PlayerPosition = 400 #The current position of the player
-UnlockedLevel = 1 #The hardest level the player has unlocked
+PlayerData = {} #The stats of the loaded player
+PlayerHealth = 10 #The current health of the player
 
 
 class Blast: #The class for the player's energy blasts
@@ -191,18 +187,78 @@ class LevelButton():
         self.unlocked = (unlocked>=self.level)
         myfont = pygame.font.SysFont('Arial Black', 25,True) #Set a font to arial black size 75 and bold
         if self.unlocked:
-            textsurface = myfont.render(str(self.level), False, Cyan) #Make a text 'Button ' using that font with the color Cyan
+            textsurface = myfont.render(str(self.level), False, Cyan) #Make a text 'Button' using that font with the color Cyan
         else:
-            textsurface = myfont.render(str(self.level), False, Red) #Make a text 'Button ' using that font with the color Cyan
+            textsurface = myfont.render(str(self.level), False, Red) #Make a text 'Button' using that font with the color Red
         Screen.blit(textsurface,((50*column)+125,50*row)) #Draw the texts on the screen
         pygame.display.update()
     def update(self):
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
-        if (50*self.column)+125 <= mouse[0] <= (50*self.column)+150 and 50*self.row <= mouse[1] <= (50*self.row)+25 and self.unlocked and click[0] == 1:
-                ComputerLevel = self.level
-                GameLoop() 
+        if (50*self.column)+125 <= mouse[0] <= (50*self.column)+150 and 50*self.row <= mouse[1] <= (50*self.row)+25 and self.unlocked and click[0] == 1: #If the player clicks this button
+                global ComputerLevel
+                ComputerLevel = self.level #Set the computers level to the same as the button's
+                GameLoop() #Start the game
+                
+class PlayerButton():
+    def __init__(self,x,y,name):
+        self.x = x
+        self.y = y
+        self.name = name
+    def update(self):
+        myfont = pygame.font.SysFont('Arial Black', 50,True) #Set a font to arial black size 50 and bold
+        player = myfont.render(self.name, False, DarkOrange) #Show a button with the text of the player's name
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        if self.x <= mouse[0] <= self.x+player.get_width() and self.y <= mouse[1] <= self.y+player.get_height(): #If the user is hovering over this button
+            player = myfont.render(self.name, False, DarkOrange, Orange) #Add an orange background to the button
+            if click[0] == 1: #If the user clicks
+                global PlayerData
+                PlayerData = Player.LoadPlayer(self.name) #Load the player data of the name of this button
+                ChooseLevel() #Open the choose level menu
+        Screen.blit(player,(self.x,self.y))
+        pygame.display.update()
+                
+class NewPlayer(): #A button that creates a new player
+    def update(self):
+        myfont = pygame.font.SysFont('Arial Black', 50,True) #Set a font to arial black size 50 and bold
+        text = myfont.render("New Player", False, DarkOrange, Black)
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        if 200 <= mouse[0] <= 200+text.get_width() and 500 <= mouse[1] <= 500+text.get_height(): #If the mouse is hovering over the button
+            text = myfont.render("New Player", False, DarkOrange, Orange) #Give it an orange background
+            if click[0] == 1: #If the player clicks
+                typing = True
+                newname = "" #The name of the new player
+                while typing:
+                    Screen.fill(Black) #Makes the screen blank
+                    pygame.draw.line(Screen, White, (100,350), (700,350), 1) #Draws a white line across the screen
+                    text = myfont.render(newname, False, White) #Renders a text that displays the name of the new player
+                    Screen.blit(text,(400-(text.get_width()//2),275)) #Draws that text on the white line
+                    pygame.display.update() #Refreshes the screen
+                    for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
+                        if event.type == pygame.QUIT: #If the user clicked the close button
+                            kill() #Close the window and stop the program
+                        if event.type == pygame.KEYDOWN: #If a key is being pressed
+                            if event.key == pygame.K_ESCAPE: #If the player presses the escape key
+                                ChoosePlayer() #Go back to the choose player menu
+                            elif event.key == pygame.K_BACKSPACE: #If the player pressed the backspace key
+                                newname = newname[:-1] #Delete the last character in the newname
+                            elif event.key == pygame.K_RETURN: #If the player presses the enter key
+                                if newname not in Player.GetPlayers() and len(newname) > 0: #If there is not a player with the entered name already and the name is not blank
+                                    Player.CreatePlayer(newname) #Create a player with the name entered
+                                    global PlayerData
+                                    PlayerData = Player.LoadPlayer(newname) #Load that new player's data
+                                    ChooseLevel() #Open the choose level menu
+                            else:
+                                if len(newname) < 15: #If the length of the name is less than 15
+                                    newname += event.unicode #Add whatever key the user just pressed to the name
+                                
+                    Clock.tick(25)
+        Screen.blit(text,(200,500))
+        pygame.display.update()
         
+                
 def kill(): #Kills the program
     SettingsFile.close()
     pygame.quit()
@@ -233,10 +289,10 @@ def change_volume(start,change):
     return start
     
 def update_volume():
-    pygame.mixer.music.set_volume(Settings['Master']*Settings['Music'])
-    pygame.mixer.Sound.set_volume(lazer,Settings['Master']*Settings['Effects'])
-    SettingsFile = open(Directory+'\Data\Settings.dat','wb')
-    pickle.dump(Settings,SettingsFile)
+    pygame.mixer.music.set_volume(Settings['Master']*Settings['Music']) #Set the volume of the music to the master volume times the music volume
+    pygame.mixer.Sound.set_volume(lazer,Settings['Master']*Settings['Effects']) #Set the volume of the lazer sound to the master volume times the sound effect volume 
+    SettingsFile = open(Directory+'\Data\Settings.dat','wb') #Open the settings file
+    pickle.dump(Settings,SettingsFile) #Save the new settings in the file
     
 def Intro(): #The intro animation
     pygame.mixer.music.load(Directory+'\Sounds\Menu\intro.wav') #Load the intro music
@@ -290,7 +346,7 @@ def MenuLoop(): #The function that runs the main menu
             singleback = optionfont.render("singleplayer", False, Cyan)
             singlefront = optionfont.render("singleplayer", False, Red)
             if click[0] == 1:
-                ChooseLevel()
+                ChoosePlayer()
         else:
             singleback = optionfont.render("singleplayer", False, Red)
             singlefront = optionfont.render("singleplayer", False, Cyan)
@@ -334,14 +390,38 @@ def MenuLoop(): #The function that runs the main menu
                 kill() #Close the window and stop the program
         Clock.tick(30)
         
-def ChooseLevel():
-    Levels = []
-    for row in range(10):
-        for column in range(10):
-            Levels.append(LevelButton(row,column,UnlockedLevel))
+def ChoosePlayer():
+    Screen.fill(Black) #Blanks the screen
+    pygame.display.update()
+    Players = Player.GetPlayers() #Gets a list of saved players
+    Buttons = [] #A list of buttons on the screens
+    i = 1
+    for p in Players: #Creates a player button for every saved player and adds it to the list of buttons
+        Buttons.append(PlayerButton(150,100*i,p))
+        i += 1
+    if len(Buttons) < 5: #If there are less than 5 saved players
+        Buttons.append(NewPlayer()) #Add a new player button to the list of buttons
     choosing = True
     while choosing:
-        for button in Levels:
+        for button in Buttons: #Have all of the buttons run their update method
+            button.update()
+        for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
+            if event.type == pygame.QUIT: #If the user clicked the close button
+                kill() #Close the window and stop the program
+            if event.type == pygame.KEYDOWN: #If a key is being pressed
+                if event.key == pygame.K_ESCAPE: #If the escape key is being pressed
+                    MenuLoop() #Go back to the main menu
+        Clock.tick(10)
+        
+def ChooseLevel():
+    Screen.fill(Black)
+    Levels = []
+    for row in range(10): #For each of 10 rows
+        for column in range(10): #For each of 10 columns
+            Levels.append(LevelButton(row,column,PlayerData['Unlocked'])) #Add a level button to the list of levels with the current row, column, and highest level the player has unlocked
+    choosing = True
+    while choosing:
+        for button in Levels: #Has all of the level buttons run their update method
             button.update()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
@@ -359,26 +439,20 @@ def GameLoop(): #The function that runs the game
     global ComputerHealth
     global ComputerBlastSpeed
     global ComputerDmg
-    global PlayerHealth
-    global BlastDmg
-    global BlastSpeed
-    global FireSpeed
     global ComputerMoveSpeed
-    global PlayerSpeed
     global ComputerPosition
     global PlayerPosition
+    global PlayerData
+    global PlayerHealth
+    global ComputerLevel
     #Reset the computer's stats
     ComputerHealth = 10
     ComputerDmg = 1
     ComputerFireSpeed = 1
     ComputerBlastSpeed = 1
     ComputerMoveSpeed = 1
-    #Reset the player's stats
-    PlayerHealth = 10
-    BlastDmg = 1
-    BlastSpeed = 1
-    FireSpeed = 1
-    PlayerSpeed = 1
+    #Reset the player's health
+    PlayerHealth = PlayerData['Health']
     #Reset mech positions
     ComputerPosition = 400
     PlayerPosition = 400
@@ -416,7 +490,7 @@ def GameLoop(): #The function that runs the game
         if not ComputerBlastSpeed < ComputerLevel/10 and not ComputerDmg < ComputerLevel/4 and not ComputerFireSpeed < ComputerLevel/5 and not ComputerMoveSpeed < ComputerLevel/10 and not ComputerHealth < ComputerLevel**2:
             break #If the computer has hit all level caps break the loop
     while not Close:
-        if ReloadCounter >= 100/FireSpeed: #If the reload counter is more than the time needed to reload
+        if ReloadCounter >= 100/PlayerData['FireSpeed']: #If the reload counter is more than the time needed to reload
             Reloading = False #Set reloading to false
             ReloadCounter = 0 #Reset the reload counter to 0
         elif Reloading == True: #Else as long as it is reloading
@@ -447,37 +521,42 @@ def GameLoop(): #The function that runs the game
                         ComputerPosition -= ComputerMoveSpeed
                     elif newrand == 2 and ComputerPosition < screen_height-150:
                         ComputerPosition -= ComputerMoveSpeed
-        rand = randint(ComputerLevel,250) #The computer's level determines the chance of gaining/dropping its agressiveness
+        rand = randint(ComputerLevel,250) #The computer's level determines the chance of gaining/dropping its aggressiveness
         if rand == 250: #If rand is 1000
             Aggressive = randint(1,2) #Possibly change the computer's strategy
         GameEventHandler() #Run the game event handler function
         DrawScreen() #Run the draw screen function
-        if PlayerHealth < 1 or ComputerHealth < 1:
-            Blasts.clear()
-            EBlasts.clear()
-            Explosions.clear()
-            MenuLoop()
+        if PlayerHealth < 1: #If the player's health is less than 1
+            Blasts.clear() #Destroy all player blasts
+            EBlasts.clear() #Destroy all enemy blasts
+            Explosions.clear() #Destroy all explosions
+            Lose()
+        elif ComputerHealth < 1: #If the computer's health is less than 1
+            Blasts.clear() #Destroy all player blasts
+            EBlasts.clear() #Destroy all enemy blasts
+            Explosions.clear() #Destroy all explosions
+            Win()
         Clock.tick(100) #How many times this function will run per second
         
 def GameEventHandler(): #Handles the events during the game
     global Reloading
     global PlayerPosition
-    global PlayerSpeed
+    global PlayerData
     for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
         if event.type == pygame.QUIT: #If the user clicked the close button
             kill() #Close the window and stop the program
         if event.type == pygame.KEYDOWN: #If a key is being pressed
             if event.key == pygame.K_SPACE: #If that key is space
                 if not Reloading: #If the mech is not reloading
-                    Blasts.append(Blast(BlastSpeed,BlastDmg,BlastImg)) #Create a blast with the speed of BlastSpeed dmg and size of BlastDmg and with the image of BlastImg
+                    Blasts.append(Blast(PlayerData['BlastSpeed'],PlayerData['Damage'],BlastImg)) #Create a blast with the speed of BlastSpeed dmg and size of BlastDmg and with the image of BlastImg
                     pygame.mixer.Sound.play(lazer) #Play the lazer blast sound effect
                     Reloading = True #Set reloading to true
-            if event.key == pygame.K_ESCAPE:
-                Pause()
-            if event.key == pygame.K_UP and PlayerPosition > 0:
-                PlayerPosition -= PlayerSpeed
-            if event.key == pygame.K_DOWN and PlayerPosition < screen_height-150:
-                PlayerPosition += PlayerSpeed
+            if event.key == pygame.K_ESCAPE: #If the player presses escape
+                Pause() #Pause the game
+            if event.key == pygame.K_UP and PlayerPosition > 0: #If the player presses the up arrow and their mech is not at the top
+                PlayerPosition -= PlayerData['MoveSpeed'] #Move their mech upward at their move speed
+            if event.key == pygame.K_DOWN and PlayerPosition < screen_height-150: #If the player presses the down arrow and their mech is not at the bottom
+                PlayerPosition += PlayerData['MoveSpeed'] #Move their mech downward at their move speed
                     
 def DrawScreen(): #Draws the screen
     Screen.fill(Black) #Resets the screen to black
@@ -485,8 +564,8 @@ def DrawScreen(): #Draws the screen
         Blast.update()
     for Blast in EBlasts: #Draws all of the computer blasts on the screen
         Blast.update()
-    pygame.draw.rect(Screen, PlayerColor, [0,PlayerPosition+25,100,70]) #Draws the player's mech
-    pygame.draw.polygon(Screen, PlayerColor, ((0,PlayerPosition+90),(50,PlayerPosition+90),(30,PlayerPosition+110),(0,PlayerPosition+110)))
+    pygame.draw.rect(Screen, PlayerData['Color'], [0,PlayerPosition+25,100,70]) #Draws the player's mech
+    pygame.draw.polygon(Screen, PlayerData['Color'], ((0,PlayerPosition+90),(50,PlayerPosition+90),(30,PlayerPosition+110),(0,PlayerPosition+110)))
     Screen.blit(MechImg,(0,PlayerPosition))
     pygame.draw.rect(Screen, EnemyColor, [screen_width-100,ComputerPosition+25,100,70]) #Draws the computer's mech
     pygame.draw.polygon(Screen, EnemyColor, ((screen_width,ComputerPosition+90),(screen_width-50,ComputerPosition+90),(screen_width-30,ComputerPosition+110),(screen_width,ComputerPosition+110)))
@@ -495,7 +574,7 @@ def DrawScreen(): #Draws the screen
         Boom.update()
     chealth = ComputerHealth
     hindex = 0
-    while chealth > 0:
+    while chealth > 0: #Draws the computer's health bar
         if chealth >= 500:
             pygame.draw.rect(Screen, HealthBarColors[hindex], [screen_width-250,10,250,35])
             chealth -= 500
@@ -505,7 +584,7 @@ def DrawScreen(): #Draws the screen
         hindex += 1
     phealth = PlayerHealth
     hindex = 0
-    while phealth > 0:
+    while phealth > 0: #Draws the player's health bar
         if phealth >= 500:
             pygame.draw.rect(Screen, HealthBarColors[hindex], [0,10,250,35])
             phealth -= 500
@@ -543,7 +622,79 @@ def Pause():
                 if event.key == pygame.K_ESCAPE: #If that key is escape
                     paused = False #Unpause the game
         Clock.tick(10)
+        
+def Win(): #Displays the win screen
+    global PlayerData
+    global ComputerLevel
+    mainfont = pygame.font.SysFont('Arial Black', 75,True)
+    text = mainfont.render('YOU WON!', False, Cyan) #Render the text 'YOU WON!' in Cyan
+    Screen.blit(text,(screen_width//2-(text.get_width()//2),screen_height//2-(text.get_height()//2))) #Display the text
+    XP = randint(ComputerLevel//2,ComputerLevel) #The amount of xp gained
+    PlayerData['XP'] += XP #Add the gained xp to the player's xp
+    statsfont = pygame.font.SysFont('Arial Black', 60,False)
+    bonuschance = randint(ComputerLevel//PlayerData['Level'],100) #The chance the player will get points
+    bonus = 0 #The amount of points gained
+    while PlayerData['XP'] >= PlayerData['Level']**2 and PlayerData['Level'] < 100: #If the player can level up
+        PlayerData['XP'] -= PlayerData['Level']**2 #Subtract the needed xp for the level up
+        PlayerData['Level'] += 1 #Level up
+        bonus += int(math.sqrt(PlayerData['Level'])) #Give points for leveling up
+    xptext = statsfont.render('+{} {}/{} Level:{}'.format(XP,PlayerData['XP'],PlayerData['Level']**2,PlayerData['Level']), False, Blue) #Display the amount of xp gained, the player's total xp, the amount of xp needed to level up, and the player's current level
+    Screen.blit(xptext,(screen_width//2-(text.get_width()//2),screen_height//2+(text.get_height()//2)))
+    if bonuschance == 100: #If the bonus chance is 100
+        bonus += randint(1,PlayerData['Level']) #Add bonus points
+    if bonus > 0: #If the player got points
+        PlayerData['Points'] += bonus #Add the points to the player's
+        pointstext = statsfont.render('Points +'+str(bonus),False,Blue) #Render the amount of points gained
+        Screen.blit(pointstext,(screen_width//2-(text.get_width()//2),screen_height//2+(text.get_height()//2)+xptext.get_height())) #Display how many points they gained
+    if ComputerLevel == PlayerData['Unlocked']:
+        PlayerData['Unlocked'] += 1
+    Player.SavePlayer(PlayerData) #Save the player's stats
+    pygame.display.update()
+    waiting = True
+    while waiting:
+        for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
+            if event.type == pygame.QUIT: #If the user clicked the close button
+                kill() #Close the window and stop the program
+            if event.type == pygame.KEYDOWN: #If a key is being pressed
+                if event.key == pygame.K_ESCAPE:
+                    ChooseLevel() #Returns to the choose level menu
+        Clock.tick(10)
     
+def Lose(): #Displays the game over screen
+    global PlayerData
+    global ComputerLevel
+    mainfont = pygame.font.SysFont('Arial Black', 75,True)
+    text = mainfont.render('GAME OVER', False, Red) #Render the text 'GAME OVER' in Red
+    Screen.blit(text,(screen_width//2-(text.get_width()//2),screen_height//2-(text.get_height()//2))) #Display the text
+    XP = randint(0,ComputerLevel//10) #The amount of xp gained
+    PlayerData['XP'] += XP #Add the gained xp to the player's xp
+    statsfont = pygame.font.SysFont('Arial Black', 60,False)
+    bonuschance = randint(ComputerLevel//PlayerData['Level'],1000) #The chance the player will get points
+    bonus = 0 #The amount of points gained
+    while PlayerData['XP'] >= PlayerData['Level']**2 and PlayerData['Level'] < 100: #If the player can level up
+        PlayerData['XP'] -= PlayerData['Level']**2 #Subtract the needed xp for the level up
+        PlayerData['Level'] += 1 #Level up
+        bonus += int(math.sqrt(PlayerData['Level'])) #Give points for leveling up
+    xptext = statsfont.render('+{} {}/{} Level:{}'.format(XP,PlayerData['XP'],PlayerData['Level']**2,PlayerData['Level']), False, Blue) #Display the amount of xp gained, the player's total xp, the amount of xp needed to level up, and the player's current level
+    Screen.blit(xptext,(screen_width//2-(text.get_width()//2),screen_height//2+(text.get_height()//2)))
+    if bonuschance == 1000: #If the bonus chance is 1000
+        bonus += randint(1,PlayerData['Level']) #Add bonus points
+    if bonus > 0: #If the player got points
+        PlayerData['Points'] += bonus #Add the points to the player's
+        pointstext = statsfont.render('Points +'+str(bonus),False,Blue) #Render the amount of points gained
+        Screen.blit(pointstext,(screen_width//2-(text.get_width()//2),screen_height//2+(text.get_height()//2)+xptext.get_height())) #Display how many points they gained
+    Player.SavePlayer(PlayerData) #Save the player's stats
+    pygame.display.update()
+    waiting = True
+    while waiting:
+        for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
+            if event.type == pygame.QUIT: #If the user clicked the close button
+                kill() #Close the window and stop the program
+            if event.type == pygame.KEYDOWN: #If a key is being pressed
+                if event.key == pygame.K_ESCAPE:
+                    ChooseLevel() #Returns to the choose level menu
+        Clock.tick(10)
+        
 def SettingsLoop():
     inSettings = True
     while inSettings:
