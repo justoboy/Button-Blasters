@@ -13,9 +13,14 @@ import Player
 try:
     import pygame
 except ModuleNotFoundError:
-    print("You do not have the necessary pygame module!")
-    print("You must install pygame before you can play this game.")
-    print("To install pygame open a command prompt and enter: pip install pygame")
+    try:
+        from pip._internal import main
+        main(['install','pygame'])
+        import pygame
+    except:
+        print("Could not install the required pygame module!")
+        print("You must install pygame before you can play this game")
+import Upgrade
 
 Directory = os.getcwd() #Gets the directory this script is in
 pygame.init()
@@ -185,20 +190,21 @@ class LevelButton():
         self.column = column
         self.level = (column+1)+(10*row)
         self.unlocked = (unlocked>=self.level)
-        myfont = pygame.font.SysFont('Arial Black', 25,True) #Set a font to arial black size 75 and bold
-        if self.unlocked:
-            textsurface = myfont.render(str(self.level), False, Cyan) #Make a text 'Button' using that font with the color Cyan
-        else:
-            textsurface = myfont.render(str(self.level), False, Red) #Make a text 'Button' using that font with the color Red
-        Screen.blit(textsurface,((50*column)+125,50*row)) #Draw the texts on the screen
-        pygame.display.update()
     def update(self):
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
-        if (50*self.column)+125 <= mouse[0] <= (50*self.column)+150 and 50*self.row <= mouse[1] <= (50*self.row)+25 and self.unlocked and click[0] == 1: #If the player clicks this button
+        myfont = pygame.font.SysFont('Arial Black', 25,True) #Set a font to arial black size 75 and bold
+        if self.unlocked:
+            textsurface = myfont.render(str(self.level), False, Cyan, Black) #Make a text 'Button' using that font with the color Cyan and a black background
+        else:
+            textsurface = myfont.render(str(self.level), False, Red) #Make a text 'Button' using that font with the color Red
+        if (50*self.column)+125 <= mouse[0] <= (50*self.column)+150 and 50*self.row <= mouse[1] <= (50*self.row)+25 and self.unlocked:
+            textsurface = myfont.render(str(self.level), False, Cyan, Red) #Make a text 'Button' using that font with the color Cyan and a red background
+            if click[0] == 1: #If the player clicks this button
                 global ComputerLevel
                 ComputerLevel = self.level #Set the computers level to the same as the button's
                 GameLoop() #Start the game
+        Screen.blit(textsurface,((50*self.column)+125,50*self.row)) #Draw the texts on the screen
                 
 class PlayerButton():
     def __init__(self,x,y,name):
@@ -207,7 +213,7 @@ class PlayerButton():
         self.name = name
     def update(self):
         myfont = pygame.font.SysFont('Arial Black', 50,True) #Set a font to arial black size 50 and bold
-        player = myfont.render(self.name, False, DarkOrange) #Show a button with the text of the player's name
+        player = myfont.render(self.name, False, DarkOrange, Black) #Show a button with the text of the player's name
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
         if self.x <= mouse[0] <= self.x+player.get_width() and self.y <= mouse[1] <= self.y+player.get_height(): #If the user is hovering over this button
@@ -258,6 +264,23 @@ class NewPlayer(): #A button that creates a new player
         Screen.blit(text,(200,500))
         pygame.display.update()
         
+class TextButton(): #Exits to the main menu from the choose level screen
+    def __init__(self,x,y,text,function):
+        self.x = x
+        self.y = y
+        self.text = text
+        self.function = function
+    def update(self):
+        myfont = pygame.font.SysFont('Arial Black', 25,True) #Set a font to arial black size 25 and bold
+        player = myfont.render(self.text, False, DarkOrange, Black) #Show a button with the text of the player's name
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        if self.x <= mouse[0] <= self.x+player.get_width() and self.y <= mouse[1] <= self.y+player.get_height(): #If the user is hovering over this button
+            player = myfont.render(self.text, False, DarkOrange, Orange) #Add an orange background to the button
+            if click[0] == 1: #If the user clicks
+                self.function() #Trigger the button's function
+        Screen.blit(player,(self.x,self.y))
+        pygame.display.update()
                 
 def kill(): #Kills the program
     SettingsFile.close()
@@ -391,6 +414,8 @@ def MenuLoop(): #The function that runs the main menu
         Clock.tick(30)
         
 def ChoosePlayer():
+    pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
+    pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
     Screen.fill(Black) #Blanks the screen
     pygame.display.update()
     Players = Player.GetPlayers() #Gets a list of saved players
@@ -413,12 +438,22 @@ def ChoosePlayer():
                     MenuLoop() #Go back to the main menu
         Clock.tick(10)
         
+def UpgradeMenu():        
+    global PlayerData
+    Upgrade.Main(Screen,PlayerData['Name'],MechImg)
+    PlayerData = Player.LoadPlayer(PlayerData['Name'])
+    
 def ChooseLevel():
+    pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
+    pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
     Screen.fill(Black)
     Levels = []
     for row in range(10): #For each of 10 rows
         for column in range(10): #For each of 10 columns
+            pygame.display.update()
             Levels.append(LevelButton(row,column,PlayerData['Unlocked'])) #Add a level button to the list of levels with the current row, column, and highest level the player has unlocked
+    Levels.append(TextButton(600,500,"Main Menu",MenuLoop))
+    Levels.append(TextButton(400,500,"Upgrades",UpgradeMenu))
     choosing = True
     while choosing:
         for button in Levels: #Has all of the level buttons run their update method
@@ -426,6 +461,7 @@ def ChooseLevel():
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
                 kill() #Close the window and stop the program
+        pygame.display.update()
         Clock.tick(10)
 
 def GameLoop(): #The function that runs the game
@@ -696,6 +732,8 @@ def Lose(): #Displays the game over screen
         Clock.tick(10)
         
 def SettingsLoop():
+    pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
+    pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
     inSettings = True
     while inSettings:
         mouse = pygame.mouse.get_pos()
