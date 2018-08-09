@@ -652,7 +652,7 @@ def Pause():
                 EBlasts.clear()
                 Explosions.clear()
                 wait(.25)
-                MenuLoop()
+                ChooseLevel()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
                 kill() #Close the window and stop the program
