@@ -21,6 +21,7 @@ except ModuleNotFoundError:
         print("Could not install the required pygame module!")
         print("You must install pygame before you can play this game")
 import Upgrade
+import Multiplayer
 
 Directory = os.getcwd() #Gets the directory this script is in
 pygame.init()
@@ -82,7 +83,7 @@ Reloading = False #If the player's mech is reloading
 ComputerReloading = False #If the computer's mech is reloading
 SettingsFile = open(Directory+'\Data\Settings.dat','rb')
 Settings = pickle.load(SettingsFile)
-SettingsFile = open(Directory+'\Data\Settings.dat','wb')
+SettingsFile.close()
 EnemyColor = Black #The background color of the computers mech
 ComputerLevel = 1 #The difficulty of the computer
 ComputerHealth = 10 #The health of the computer
@@ -223,7 +224,6 @@ class PlayerButton():
                 PlayerData = Player.LoadPlayer(self.name) #Load the player data of the name of this button
                 ChooseLevel() #Open the choose level menu
         Screen.blit(player,(self.x,self.y))
-        pygame.display.update()
                 
 class NewPlayer(): #A button that creates a new player
     def update(self):
@@ -278,12 +278,11 @@ class TextButton(): #Exits to the main menu from the choose level screen
         if self.x <= mouse[0] <= self.x+player.get_width() and self.y <= mouse[1] <= self.y+player.get_height(): #If the user is hovering over this button
             player = myfont.render(self.text, False, DarkOrange, Orange) #Add an orange background to the button
             if click[0] == 1: #If the user clicks
+                wait(.25)
                 self.function() #Trigger the button's function
         Screen.blit(player,(self.x,self.y))
-        pygame.display.update()
                 
 def kill(): #Kills the program
-    SettingsFile.close()
     pygame.quit()
     quit()
 
@@ -316,6 +315,7 @@ def update_volume():
     pygame.mixer.Sound.set_volume(lazer,Settings['Master']*Settings['Effects']) #Set the volume of the lazer sound to the master volume times the sound effect volume 
     SettingsFile = open(Directory+'\Data\Settings.dat','wb') #Open the settings file
     pickle.dump(Settings,SettingsFile) #Save the new settings in the file
+    SettingsFile.close()
     
 def Intro(): #The intro animation
     pygame.mixer.music.load(Directory+'\Sounds\Menu\intro.wav') #Load the intro music
@@ -377,7 +377,9 @@ def MenuLoop(): #The function that runs the main menu
             multiback = optionfont.render("multiplayer", False, Cyan)
             multifront = optionfont.render("multiplayer", False, Red)
             if click[0] == 1:
-                print("Coming Soon!")
+                Multiplayer.ChoosePlayers(Screen)
+                pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
+                pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
         else:
             multiback = optionfont.render("multiplayer", False, Red)
             multifront = optionfont.render("multiplayer", False, Cyan)
@@ -414,8 +416,6 @@ def MenuLoop(): #The function that runs the main menu
         Clock.tick(30)
         
 def ChoosePlayer():
-    pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
-    pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
     Screen.fill(Black) #Blanks the screen
     pygame.display.update()
     Players = Player.GetPlayers() #Gets a list of saved players
@@ -456,6 +456,7 @@ def ChooseLevel():
     Levels.append(TextButton(400,500,"Upgrades",UpgradeMenu))
     choosing = True
     while choosing:
+        Screen.fill(Black)
         for button in Levels: #Has all of the level buttons run their update method
             button.update()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
@@ -634,22 +635,23 @@ def Pause():
     paused = True
     font = pygame.font.SysFont('Arial Black', 50,True) #Set a font to arial black size 50 and bold
     back = font.render("Back To Game", False, DarkOrange)
-    menu = font.render(" Main Menu  ", False, DarkOrange)
+    menu = font.render("Exit To Menu", False, DarkOrange)
     Screen.blit(back,(200,250))
     Screen.blit(menu,(200,350))
     pygame.display.update()
     while paused:
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
-        if 200 < mouse[0] < 654 and 270 < mouse[1] < 305: #If the mouse is hovering over the back to game button
+        if 200 < mouse[0] < 200+back.get_width() and 270 < mouse[1] < 270+back.get_height(): #If the mouse is hovering over the back to game button
             if click[0] == 1: #If the player clicks
                 paused = False #Unpause the game
-        if 225 < mouse[0] < 555 and 370 < mouse[1] < 405: #If the mouse is hovering over the back to game button
+        if 225 < mouse[0] < 225+menu.get_width() and 370 < mouse[1] < 370+menu.get_height(): #If the mouse is hovering over the menu button
             if click[0] == 1: #If the player clicks
-                #Return to the main menu
+                #Return to the choose level menu
                 Blasts.clear()
                 EBlasts.clear()
                 Explosions.clear()
+                wait(.25)
                 MenuLoop()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
