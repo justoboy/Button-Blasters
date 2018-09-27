@@ -30,3 +30,6 @@ def LoadPlayer(Name): #Loads a player's data
 def SavePlayer(Data):
     File = open(Directory+'{}.dat'.format(Data['Name']), 'wb') #Opens a player save file with the name stored in the given dictionary 
     pickle.dump(Data,File) #Saves the given dictionary in the file
+    
+def DeletePlayer(Name):
+    os.remove(Directory+'{}.dat'.format(Name))
