@@ -58,6 +58,9 @@ for i in range(32): #Loads explosion images(frames) into Explosion1
 for i in range(16):#Loads explosion images(frames) into Explosion2
     Explosion2.append(pygame.image.load(Directory+'\Images\Explosion2\\frame_{}.png'.format(i)))
     Explosion2.append(pygame.image.load(Directory+'\Images\Explosion2\\frame_{}.png'.format(i)))
+Cursor0 = pygame.image.load(Directory+'/Images/Cursor0.png') #Loads the arrow cursor
+Cursor1 = pygame.image.load(Directory+'/Images/Cursor1.png') #Loads the pointer cursor
+Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25))) #Sets cursor to arrow
 lazer = pygame.mixer.Sound(Directory+'\Sounds\Effects\\151022__bubaproducer__laser-shot-silenced.wav') #Loads the lazer sound effect
 wrong = pygame.mixer.Sound(Directory+'\Sounds\Menu\Wrong.wav') #Loads the wrong sound effect
 Clock = pygame.time.Clock()
@@ -183,13 +186,15 @@ class PlayerButton():
         self.activating = False
         self.active = False
     def update(self):
+        global Cursor, Cursor1
         myfont = pygame.font.SysFont('Arial Black', int(50*(screen_height/600)),True) #Set a font to arial black size 50 and bold
         player = myfont.render(self.name, False, DarkOrange, Black) #Show a button with the text of the player's name
         mouse = pygame.mouse.get_pos()
         if screen_width*self.x <= mouse[0] <= (screen_width*self.x)+player.get_width() and screen_height*self.y <= mouse[1] <= (screen_height*self.y)+player.get_height(): #If the user is hovering over this button
             player = myfont.render(self.name, False, DarkOrange, Orange) #Add an orange background to the button
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     self.activating = True
         elif self.active:
             player = myfont.render(self.name, False, DarkOrange, Orange) #Add an orange background to the button
@@ -202,11 +207,13 @@ class TextButton(): #Exits to the main menu from the choose level screen
         self.text = text
         self.function = function
     def update(self):
+        global Cursor, Cursor1
         myfont = pygame.font.SysFont('Arial Black', int(33*(screen_height/600)),True) #Set a font to arial black size 25 and bold
         player = myfont.render(self.text, False, DarkOrange, Black) #Show a button with the text of the player's name
         mouse = pygame.mouse.get_pos()
         if screen_width*self.x <= mouse[0] <= screen_width*self.x+player.get_width() and screen_height*self.y <= mouse[1] <= screen_height*self.y+player.get_height(): #If the user is hovering over this button
             player = myfont.render(self.text, False, DarkOrange, Orange) #Add an orange background to the button
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     self.function() #Trigger the button's function
@@ -286,7 +293,7 @@ def GetPlayer(players):
             return player.name
                 
 def ChoosePlayers(s,a,w,h):
-    global Screen, aspect_ratio, screen_width, screen_height
+    global Screen, aspect_ratio, screen_width, screen_height, Cursor, Cursor0
     Screen = s
     aspect_ratio = a
     screen_width = w
@@ -306,6 +313,7 @@ def ChoosePlayers(s,a,w,h):
     global choosing
     choosing = True
     while choosing:
+        Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25)))
         Screen.fill(Black) #Blanks the screen
         for button in Buttons1: #Have all of the buttons1 run their update method
             button.update()
@@ -323,6 +331,7 @@ def ChoosePlayers(s,a,w,h):
                 button.activating = False
         backbutton.update()
         playbutton.update()
+        Screen.blit(Cursor,pygame.mouse.get_pos())
         pygame.display.update()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
@@ -332,7 +341,7 @@ def ChoosePlayers(s,a,w,h):
             if event.type == pygame.KEYDOWN: #If a key is being pressed
                 if event.key == pygame.K_ESCAPE: #If the escape key is being pressed
                     choosing = False
-        Clock.tick(10)
+        Clock.tick(30)
     return screen_width, screen_height
         
 def GameLoop(): #The function that runs the game
@@ -452,21 +461,27 @@ def DrawScreen(): #Draws the screen
     
 def Pause():
     paused = True
-    font = pygame.font.SysFont('Arial Black', int(50*(screen_height/600)),True) #Set a font to arial black size 50 and bold
-    back = font.render("Back To Game", False, DarkOrange)
-    menu = font.render("Exit To Menu", False, DarkOrange)
-    Screen.blit(back,(screen_width/2-back.get_width()/2,screen_height/2-back.get_height()/2))
-    Screen.blit(menu,(screen_width/2-menu.get_width()/2,screen_height/2+menu.get_height()/2))
-    pygame.display.update()
+    global Cursor, Cursor0, Cursor1
+    s = Screen.copy()
     while paused:
+        si = pygame.transform.scale(s,(screen_width,screen_height))
+        Screen.blit(si,(0,0))
+        Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25)))
+        font = pygame.font.SysFont('Arial Black', int(50*(screen_height/600)),True) #Set a font to arial black size 50 and bold
+        back = font.render("Back To Game", False, DarkOrange)
+        menu = font.render("Exit To Menu", False, DarkOrange)
         mouse = pygame.mouse.get_pos()
-        if screen_width/2-back.get_width()/2 < mouse[0] < screen_width/2+back.get_width()/2 and screen_height/2-back.get_height()/2 < mouse[1] < screen_height/2+back.get_height()/2: #If the mouse is hovering over the back to game button
+        if screen_width/2-back.get_width()/2 < mouse[0] < screen_width/2+back.get_width()/2 and screen_height/2-back.get_height() < mouse[1] < screen_height/2: #If the mouse is hovering over the back to game button
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+            back = font.render("Back To Game", False, DarkOrange, Orange)
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     paused = False #Unpause the game
-        if screen_width/2-menu.get_width()/2 < mouse[0] < screen_width/2+menu.get_width()/2 and screen_height*.6 < mouse[1] < screen_height/2+menu.get_height()/2+menu.get_height(): #If the mouse is hovering over the menu button
+        if screen_width/2-menu.get_width()/2 < mouse[0] < screen_width/2+menu.get_width()/2 and screen_height/2 < mouse[1] < screen_height/2+menu.get_height(): #If the mouse is hovering over the menu button
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+            menu = font.render("Exit To Menu", False, DarkOrange, Orange)
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     #Return to the choose players menu
                     Blasts.clear()
                     EBlasts.clear()
@@ -477,6 +492,10 @@ def Pause():
                     paused = False
                     pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
                     pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
+        Screen.blit(back,(screen_width/2-back.get_width()/2,screen_height/2-back.get_height()))
+        Screen.blit(menu,(screen_width/2-menu.get_width()/2,screen_height/2))
+        Screen.blit(Cursor, mouse)
+        pygame.display.update()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
                 kill() #Close the window and stop the program
@@ -485,18 +504,22 @@ def Pause():
             if event.type == pygame.KEYDOWN: #If a key is being pressed
                 if event.key == pygame.K_ESCAPE: #If that key is escape
                     paused = False #Unpause the game
-        Clock.tick(10)
+        Clock.tick(30)
         
 def GameOver(Winner): #Displays the game over screen
-    mainfont = pygame.font.SysFont('Arial Black', int(75*(screen_height/600)),True)
-    text = mainfont.render('GAME OVER', False, Red) #Render the text 'GAME OVER' in Red
-    Screen.blit(text,(screen_width//2-(text.get_width()//2),screen_height//2-(text.get_height()//2))) #Display the text
-    playerfont = pygame.font.SysFont('Arial Black', int(60*(screen_height/600)),False)
-    winnertext = playerfont.render('{} Wins!'.format(Winner), False, Blue) #Display the amount of xp gained, the player's total xp, the amount of xp needed to level up, and the player's current level
-    Screen.blit(winnertext,(screen_width//2-(winnertext.get_width()//2),screen_height//2+(text.get_height()//2)))
-    pygame.display.update()
+    global Cursor, Cursor0, Cursor1
+    s = Screen.copy()
     waiting = True
     while waiting:
+        si = pygame.transform.scale(s,(screen_width,screen_height))
+        Screen.blit(si,(0,0))
+        mainfont = pygame.font.SysFont('Arial Black', int(75*(screen_height/600)),True)
+        text = mainfont.render('GAME OVER', False, Red) #Render the text 'GAME OVER' in Red
+        Screen.blit(text,(screen_width//2-(text.get_width()//2),screen_height//2-(text.get_height()//2))) #Display the text
+        playerfont = pygame.font.SysFont('Arial Black', int(60*(screen_height/600)),False)
+        winnertext = playerfont.render('{} Wins!'.format(Winner), False, Blue) #Display the amount of xp gained, the player's total xp, the amount of xp needed to level up, and the player's current level
+        Screen.blit(winnertext,(screen_width//2-(winnertext.get_width()//2),screen_height//2+(text.get_height()//2)))
+        pygame.display.update()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
                 kill() #Close the window and stop the program

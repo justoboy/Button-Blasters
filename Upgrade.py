@@ -39,6 +39,9 @@ screen_width = 0
 screen_height = 0
 arrow0 = pygame.image.load(Directory+'\Images\Arrow0.png')
 arrow1 = pygame.image.load(Directory+'\Images\Arrow1.png')
+Cursor0 = pygame.image.load(Directory+'/Images/Cursor0.png') #Loads the arrow cursor
+Cursor1 = pygame.image.load(Directory+'/Images/Cursor1.png') #Loads the pointer cursor
+Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25))) #Sets cursor to arrow
 
 
 class Button():
@@ -52,14 +55,15 @@ class Button():
         self.min = value
         self.max = maximum
     def update(self):
-        global Points
+        global Points, Cursor, Cursor1
         mouse = pygame.mouse.get_pos()
         img = pygame.transform.scale(arrow0, (int(screen_height*.1),int(screen_height*.1)))
         if self.value > self.min:
             if screen_width*.6 < mouse[0] < screen_width*.6+img.get_width() and screen_height*self.y < mouse[1] < screen_height*self.y+img.get_height():
+                Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
                 self.screen.blit(img,(screen_width*.6,screen_height*self.y))
                 for event in pygame.event.get():
-                    if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                    if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                         self.value -= self.increment
                         Points += 1
             else:
@@ -74,8 +78,9 @@ class Button():
             img = pygame.transform.flip(img, True, False)
             if screen_width*.725 < mouse[0] < screen_width*.725+img.get_width() and screen_height*self.y < mouse[1] < screen_height*self.y+img.get_height():
                 self.screen.blit(img,(screen_width*.725,screen_height*self.y)) 
+                Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
                 for event in pygame.event.get():
-                    if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                    if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                         self.value += self.increment
                         Points -= 1
             else:
@@ -96,13 +101,14 @@ class ColorButton():
         self.Mech_Img = Mech_Img
         self.MechBackImg = MechBackImg
     def update(self):
-        global Colors
+        global Colors, Cursor, Cursor1
         mouse = pygame.mouse.get_pos()
         img = pygame.transform.scale(arrow0, (int(screen_height*.1),int(screen_height*.1)))
         if screen_width*.6 < mouse[0] < screen_width*.6+img.get_width() and screen_height*self.y < mouse[1] < screen_height*self.y+img.get_height():
             self.screen.blit(img,(screen_width*.6,screen_height*self.y))
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     if self.colorindex > 0:
                         self.colorindex -= 1
                         self.value = Colors[self.colorindex]
@@ -122,9 +128,10 @@ class ColorButton():
         img = pygame.transform.scale(arrow0, (int(screen_height*.1),int(screen_height*.1)))
         img = pygame.transform.flip(img, True, False)
         if screen_width*.725 < mouse[0] < screen_width*.725+img.get_width() and screen_height*self.y < mouse[1] < screen_height*self.y+img.get_height():
-            self.screen.blit(img,(screen_width*.725,screen_height*self.y)) 
+            self.screen.blit(img,(screen_width*.725,screen_height*self.y))
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25))) 
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     if self.colorindex < len(Colors)-1:
                         self.colorindex += 1
                         self.value = Colors[self.colorindex]
@@ -167,7 +174,9 @@ def Colorize(image, color):
     
 def Delete(Screen,PlayerName):
     choosing = True
+    global Cursor, Cursor0, Cursor1
     while choosing:
+        Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25)))
         Screen.fill(Black)    
         optionfont = pygame.font.SysFont('Arial Black', int(40*(screen_height/600)),True)
         surefont = pygame.font.SysFont('Arial Black', int(50*(screen_height/600)),True)
@@ -183,19 +192,22 @@ def Delete(Screen,PlayerName):
         mouse = pygame.mouse.get_pos()
         if screen_width*.4-yes.get_width() < mouse[0] < screen_width*.4 and screen_height*y < mouse[1] < screen_height*y+yes.get_height():
             yes = optionfont.render("Yes", False, Red, DarkRed)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     Player.DeletePlayer(PlayerName)
                     choosing = False
                     global inMenu
                     inMenu = False
         if screen_width*.55 < mouse[0] < screen_width*.55+yes.get_width() and screen_height*y < mouse[1] < screen_height*y+no.get_height():
             no = optionfont.render("No", False, Cyan, Blue)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     choosing = False
         Screen.blit(yes,(screen_width*.4-yes.get_width(),screen_height*y))
         Screen.blit(no,(screen_width*.55,screen_height*y))
+        Screen.blit(Cursor,pygame.mouse.get_pos())
         pygame.display.update()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
@@ -228,7 +240,7 @@ def Resize(Size):
     
 def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
     Data = Player.LoadPlayer(PlayerName)
-    global Points, aspect_ratio, screen_width, screen_height
+    global Points, aspect_ratio, screen_width, screen_height, inMenu, Cursor, Cursor0
     aspect_ratio = a
     screen_width = w
     screen_height = h
@@ -241,9 +253,9 @@ def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
     Buttons.append(Button(Screen,.325,Data['FireSpeed'],1,'FireSpeed',Data['Level']/5))
     Buttons.append(Button(Screen,.45,Data['MoveSpeed'],1,'MoveSpeed',Data['Level']/10))
     Buttons.append(Button(Screen,.575,Data['BlastSpeed'],1,'BlastSpeed',Data['Level']/10))
-    global inMenu
     inMenu = True
     while inMenu:
+        Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25)))
         Screen.fill((0,0,0))
         for button in Buttons:
             button.update()
@@ -276,28 +288,33 @@ def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
         mouse = pygame.mouse.get_pos()
         if screen_width*.75 <= mouse[0] <= screen_width*.75+save.get_width() and screen_height*.9 <= mouse[1] <= screen_height*.9+save.get_height():
             save = myfont.render('Save', False, DarkOrange, Orange)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     for button in Buttons:
                         Data[button.index] = button.value
                     Data['Points'] = Points
                     Player.SavePlayer(Data)
                     inMenu = False
+                    Mech_Img = Colorize(MechBackImg, Data['Color'])
                     wait(0.5)
                     Main(Screen,Data['Name'],MechImg,Mech_Img,aspect_ratio,screen_width,screen_height)
         if screen_width*.5 <= mouse[0] <= screen_width*.5+save.get_width() and screen_height*.9 <= mouse[1] <= screen_height*.9+save.get_height():
             delete = myfont.render('Delete', False, DarkOrange, Orange)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     Delete(Screen,PlayerName)
         if screen_width*.25 <= mouse[0] <= screen_width*.25+save.get_width() and screen_height*.9 <= mouse[1] <= screen_height*.9+save.get_height():
             back = myfont.render('Back', False, DarkOrange, Orange)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and event.button == 1:
+                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     inMenu = False
         Screen.blit(save,(screen_width*.75,screen_height*.9))
         Screen.blit(delete,(screen_width*.5,screen_height*.9))
         Screen.blit(back,(screen_width*.25,screen_height*.9))
+        Screen.blit(Cursor,pygame.mouse.get_pos())
         pygame.display.update()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
@@ -308,5 +325,5 @@ def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
                 if event.key == pygame.K_ESCAPE: #If that button is the escape key
                     Screen.fill(Black)
                     inMenu = False
-        Clock.tick(10)
+        Clock.tick(30)
     return screen_width, screen_height
