@@ -10,6 +10,13 @@ import random
 import pickle
 import pygame
 import Player
+from Controls import GetKey
+from Controls import Convert
+from Controls import DeConvert
+from Controls import ControllerHelp
+from Controls import GetInput
+from Controls import GetKeyName
+from Controls import CheckForJoystick
 
 Directory = os.getcwd() #Gets the directory this script is in
 pygame.init()
@@ -86,6 +93,17 @@ Player2Health = 10 #The current health of player2
 choosing = True
 Close = False
 aspect_ratio = 0
+ControlsFile = open(Directory+'\Data\Controls.dat','rb')
+Controls = pickle.load(ControlsFile)
+ControlsFile.close()
+Controls = Convert(Controls)
+ControlsFile2 = open(Directory+'\Data\Controls2.dat','rb')
+Controls2 = pickle.load(ControlsFile2)
+ControlsFile2.close()
+Controls2 = Convert(Controls2)
+controls2 = Controls2
+Keybinds = []
+DefaultKeybinds = [{'name':'Shoot1','keybind':{'type': 'key', 'value': 32}},{'name':'Up1','keybind':{'type': 'key', 'value': 119}},{'name':'Down1','keybind':{'type': 'key', 'value': 115}},{'name':'Shoot2','keybind':{'type': 'key', 'value': 13}},{'name':'Up2','keybind':{'type': 'key', 'value': 273}},{'name':'Down2','keybind':{'type': 'key', 'value': 274}}]
 
 
 class Blast: #The class for the Player1's energy blasts
@@ -194,7 +212,7 @@ class PlayerButton():
             player = myfont.render(self.name, False, DarkOrange, Orange) #Add an orange background to the button
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     self.activating = True
         elif self.active:
             player = myfont.render(self.name, False, DarkOrange, Orange) #Add an orange background to the button
@@ -215,9 +233,20 @@ class TextButton(): #Exits to the main menu from the choose level screen
             player = myfont.render(self.text, False, DarkOrange, Orange) #Add an orange background to the button
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     self.function() #Trigger the button's function
         Screen.blit(player,(screen_width*self.x,screen_height*self.y))
+        
+class Keybind():
+    def __init__(self,name,keybind):
+        self.name = name
+        self.keybind = keybind
+    def new_keybind(self):
+        self.keybind = GetInput(self.name)
+        global controls
+        controls[self.name] = self.keybind
+    def get_name(self):
+        return self.name
         
 def Colorize(image, color):
     m = pygame.mask.from_surface(image, 0)
@@ -291,6 +320,115 @@ def GetPlayer(players):
     for player in players:
         if player.active:
             return player.name
+        
+def ControlsMenu():
+    global screen_height, screen_width, aspect_ratio, Screen, Controls, Controls2, Keybinds, Clock
+    for keybind in DeConvert(Controls2):
+        Keybinds.append(Keybind(keybind['name'],keybind['keybind']))
+    done = False
+    pygame.joystick.quit()
+    pygame.joystick.init()
+    for i in range(pygame.joystick.get_count()):
+        joystick = pygame.joystick.Joystick(i)
+        if not joystick.get_init(): joystick.init()
+    while not done:
+        global Screen, screen_height, screen_width, Cursor
+        Screen.fill(Black)
+        events = []
+        for event in pygame.event.get():
+            events.append(event)
+        Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25)))
+        font = pygame.font.SysFont('Arial Black', int(25*(screen_height/600)),True)
+        mouse = pygame.mouse.get_pos()
+        for i in range(len(Keybinds)):
+            name = font.render(Keybinds[i].name, False, Cyan)
+            for event in events:
+                if GetKey(event) and GetKey(event).items() >= Keybinds[i].keybind.items():
+                    name = font.render(Keybinds[i].name, False, Cyan, Red)
+            value = font.render(GetKeyName(Keybinds[i].keybind), False, Red,Cyan)
+            if i <= 10:
+                Screen.blit(name,(0,screen_height*(i/15)))
+                if screen_width*.1 <= mouse[0] <= screen_width*.1+value.get_width() and screen_height*(i/15) <= mouse[1] <= screen_height*(i/15)+value.get_height():
+                    Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+                    value = font.render(GetKeyName(Keybinds[i].keybind), False, Cyan,Red)
+                    for event in events:
+                        if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
+                            Keybinds[i].new_keybind()
+                        elif Keybinds[i].get_name() == 'Click' and Controls['Click']['type'] != 'click' and Controls['Click']['type'] != 'key' and not CheckForJoystick() and event.type == pygame.MOUSEBUTTONDOWN: #If this is the click keybind and the click button is on a controller that is disconnected and the player clicks the mouse
+                            Keybinds[i].new_keybind()
+                Screen.blit(value,(screen_width*.1,screen_height*(i/15)))
+            elif i <= 21:
+                Screen.blit(name,(screen_width*.375,screen_height*((i-11)/15)))
+                if screen_width*.475 <= mouse[0] <= screen_width*.475+value.get_width() and screen_height*((i-11)/15) <= mouse[1] <= screen_height*((i-11)/15)+value.get_height():
+                    Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+                    value = font.render(GetKeyName(Keybinds[i].keybind), False, Cyan,Red)
+                    for event in events:
+                        if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
+                            Keybinds[i].new_keybind()
+                Screen.blit(value,(screen_width*.475,screen_height*((i-11)/15)))
+            elif i <= 32:
+                Screen.blit(name,(screen_width*.75,screen_height*((i-22)/15)))
+                if screen_width*.85 <= mouse[0] <= screen_width*.85+value.get_width() and screen_height*((i-22)/15) <= mouse[1] <= screen_height*((i-22)/15)+value.get_height():
+                    Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+                    value = font.render(GetKeyName(Keybinds[i].keybind), False, Cyan,Red)
+                    for event in events:
+                        if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
+                            Keybinds[i].new_keybind()
+                Screen.blit(value,(screen_width*.85,screen_height*((i-22)/15)))
+        back = font.render('Back', False, DarkOrange)
+        reset = font.render('Reset', False, DarkOrange)
+        save = font.render('Save', False, DarkOrange)
+        if screen_width*.1 <= mouse[0] <= screen_width*.1+back.get_width() and screen_height*.9 <= mouse[1] <= screen_height*.9+back.get_height():
+            back = font.render('Back', False, DarkOrange, Orange)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+            for event in events:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
+                    done = True
+        if screen_width*.4 <= mouse[0] <= screen_width*.4+reset.get_width() and screen_height*.9 <= mouse[1] <= screen_height*.9+reset.get_height():
+            reset = font.render('Reset', False, DarkOrange, Orange)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+            for event in events:
+                if GetKey(event) and (GetKey(event).items() >= Controls['Click'].items() or GetKey(event).items() >= {'type':'click','value':1}.items()):
+                    Reset()
+                    done = True
+        if screen_width*.7 <= mouse[0] <= screen_width*.7+save.get_width() and screen_height*.9 <= mouse[1] <= screen_height*.9+save.get_height():
+            save = font.render('Save', False, DarkOrange, Orange)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+            for event in events:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
+                    Save()
+                    save = font.render('Saved', False, Orange, DarkOrange)
+        Screen.blit(back,(screen_width*.1,screen_height*.9))
+        Screen.blit(reset,(screen_width*.4,screen_height*.9))
+        Screen.blit(save,(screen_width*.7,screen_height*.9))
+        Screen.blit(Cursor,mouse)
+        pygame.display.update()
+        for event in events:
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                done = True
+            elif event.type == pygame.VIDEORESIZE:
+                Resize(event.size)
+        if Controls['Mouse']['type'] == 'joystick':
+            ControllerHelp(Controls['Mouse'])
+        Clock.tick(30)
+    Keybinds.clear()
+    
+def Reset():
+    global DefaultKeybinds, Controls2, controls2, Screen, aspect_ratio, screen_width, screen_height
+    ControlsFile = open(Directory+'\Data\Controls2.dat', 'wb')
+    pickle.dump(DefaultKeybinds, ControlsFile)
+    Controls2 = DefaultKeybinds
+    controls2 = Convert(Controls2)
+    Keybinds.clear()
+    ControlsMenu()
+    
+def Save():
+    global Controls2, controls2
+    Controls2 = DeConvert(controls2)
+    ControlsFile = open(Directory+'\Data\Controls2.dat', 'wb')
+    pickle.dump(Controls2, ControlsFile)
+    ControlsFile.close()
                 
 def ChoosePlayers(s,a,w,h):
     global Screen, aspect_ratio, screen_width, screen_height, Cursor, Cursor0
@@ -309,7 +447,8 @@ def ChoosePlayers(s,a,w,h):
         Buttons2.append(PlayerButton(.6,.125*i,p))
         i += 1
     backbutton = TextButton(.2,.9,"Back",Back)
-    playbutton = TextButton(.6,.9,"Play",lambda: StartGame(GetPlayer(Buttons1), GetPlayer(Buttons2)) if GetPlayer(Buttons1) and GetPlayer(Buttons2) else pygame.mixer.Sound.play(wrong))
+    playbutton = TextButton(.4,.9,"Play",lambda: StartGame(GetPlayer(Buttons1), GetPlayer(Buttons2)) if GetPlayer(Buttons1) and GetPlayer(Buttons2) else pygame.mixer.Sound.play(wrong))
+    controlsbutton = TextButton(.6,.9,"Controls",ControlsMenu)
     global choosing
     choosing = True
     while choosing:
@@ -331,6 +470,7 @@ def ChoosePlayers(s,a,w,h):
                 button.activating = False
         backbutton.update()
         playbutton.update()
+        controlsbutton.update()
         Screen.blit(Cursor,pygame.mouse.get_pos())
         pygame.display.update()
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
@@ -338,9 +478,8 @@ def ChoosePlayers(s,a,w,h):
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN: #If a key is being pressed
-                if event.key == pygame.K_ESCAPE: #If the escape key is being pressed
-                    choosing = False
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the back button is being pressed
+                choosing = False
         Clock.tick(30)
     return screen_width, screen_height
         
@@ -403,27 +542,26 @@ def GameEventHandler(): #Handles the events during the game
             kill() #Close the window and stop the program
         if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-        if event.type == pygame.KEYDOWN: #If a key is being pressed
-            if event.key == pygame.K_SPACE: #If that key is space
-                if not Reloading1: #If the mech is not reloading
-                    Blasts.append(Blast(Player1Data['BlastSpeed'],Player1Data['Damage'],BlastImg)) #Create a blast with the speed of BlastSpeed dmg and size of BlastDmg and with the image of BlastImg
-                    pygame.mixer.Sound.play(lazer) #Play the lazer blast sound effect
-                    Reloading1 = True #Set reloading to true
-            if event.key == pygame.K_w and Player1Position > .1: #If the player presses the up arrow and their mech is not at the top
-                Player1Position -= Player1Data['MoveSpeed']/1000 #Move their mech upward at their move speed
-            if event.key == pygame.K_s and Player1Position < .8: #If the player presses the down arrow and their mech is not at the bottom
-                Player1Position += Player1Data['MoveSpeed']/1000 #Move their mech downward at their move speed
-            if event.key == pygame.K_RETURN: #If that key is space
-                if not Reloading2: #If the mech is not reloading
-                    EBlasts.append(EBlast(Player2Data['BlastSpeed'],Player2Data['Damage'],EBlastImg)) #Create a blast with the speed of BlastSpeed dmg and size of BlastDmg and with the image of BlastImg
-                    pygame.mixer.Sound.play(lazer) #Play the lazer blast sound effect
-                    Reloading2 = True #Set reloading to true
-            if event.key == pygame.K_UP and Player2Position > .1: #If the player presses the up arrow and their mech is not at the top
-                Player2Position -= Player2Data['MoveSpeed']/1000 #Move their mech upward at their move speed
-            if event.key == pygame.K_DOWN and Player2Position < .8: #If the player presses the down arrow and their mech is not at the bottom
-                Player2Position += Player2Data['MoveSpeed']/1000 #Move their mech downward at their move speed
-            if event.key == pygame.K_ESCAPE: #If the player presses escape
-                Pause() #Pause the game
+        if GetKey(event) and GetKey(event).items() >= Controls2['Shoot1'].items(): #If player1 presses their shoot button
+            if not Reloading1: #If their mech is not reloading
+                Blasts.append(Blast(Player1Data['BlastSpeed'],Player1Data['Damage'],BlastImg)) #Create a blast with player1's speed and dmg and with the image of BlastImg
+                pygame.mixer.Sound.play(lazer) #Play the lazer blast sound effect
+                Reloading1 = True #Set their mech reloading to true
+        if GetKey(event) and GetKey(event).items() >= Controls2['Up1'].items() and Player1Position > .1: #If player1 presses their up button and their mech is not at the top
+            Player1Position -= Player1Data['MoveSpeed']/1000 #Move their mech upward at their move speed
+        if GetKey(event) and GetKey(event).items() >= Controls2['Down1'].items() and Player1Position < .8: #If player1 presses their down button and their mech is not at the top
+            Player1Position += Player1Data['MoveSpeed']/1000 #Move their mech downward at their move speed
+        if GetKey(event) and GetKey(event).items() >= Controls2['Shoot2'].items(): #If player2 presses their shoot button
+            if not Reloading2: #If the mech is not reloading
+                EBlasts.append(EBlast(Player2Data['BlastSpeed'],Player2Data['Damage'],EBlastImg)) #Create a blast with the speed of BlastSpeed dmg and size of BlastDmg and with the image of BlastImg
+                pygame.mixer.Sound.play(lazer) #Play the lazer blast sound effect
+                Reloading2 = True #Set reloading to true
+        if GetKey(event) and GetKey(event).items() >= Controls2['Up2'].items() and Player2Position > .1: #If player2 presses their up button and their mech is not at the top
+            Player2Position -= Player2Data['MoveSpeed']/1000 #Move their mech upward at their move speed
+        if GetKey(event) and GetKey(event).items() >= Controls2['Down2'].items() and Player2Position < .8: #If player2 presses their down button and their mech is not at the top
+            Player2Position += Player2Data['MoveSpeed']/1000 #Move their mech downward at their move speed
+        elif GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the players press back button
+            Pause() #Pause the game
                     
 def DrawScreen(): #Draws the screen
     Screen.fill(Black) #Resets the screen to black
@@ -481,7 +619,7 @@ def Pause():
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             menu = font.render("Exit To Menu", False, DarkOrange, Orange)
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     #Return to the choose players menu
                     Blasts.clear()
                     EBlasts.clear()
@@ -501,9 +639,8 @@ def Pause():
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN: #If a key is being pressed
-                if event.key == pygame.K_ESCAPE: #If that key is escape
-                    paused = False #Unpause the game
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the back button is pressed
+                paused = False #Unpause the game
         Clock.tick(30)
         
 def GameOver(Winner): #Displays the game over screen
@@ -525,11 +662,10 @@ def GameOver(Winner): #Displays the game over screen
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN: #If a key is being pressed
-                if event.key == pygame.K_ESCAPE:
-                    global Close
-                    Close = True
-                    waiting = False
-                    pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
-                    pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the back button is pressed
+                global Close
+                Close = True
+                waiting = False
+                pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
+                pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
         Clock.tick(10)

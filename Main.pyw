@@ -10,13 +10,14 @@ from time import sleep
 import pickle
 import math
 import Player
-import pyautogui as pygui
 import ctypes
 user32 = ctypes.WinDLL('user32')
 import pygame
 import Upgrade
 import Multiplayer
-#import Controllers
+from Controls import Main as ControlMenu
+from Controls import GetKey
+from Controls import Convert
 
 Directory = os.getcwd() #Gets the directory this script is in
 pygame.init()
@@ -61,14 +62,9 @@ wrong = pygame.mixer.Sound(Directory+'\Sounds\Menu\Wrong.wav')
 unlocked = pygame.mixer.Sound(Directory+'\Sounds\Menu\\Unlocked.wav')
 lazer = pygame.mixer.Sound(Directory+'\Sounds\Effects\\151022__bubaproducer__laser-shot-silenced.wav') #Loads the lazer sound effect
 pygame.mixer.Sound.set_volume(ding,0.025)
-pygame.mixer.Sound.set_volume(wrong,0.1)
+pygame.mixer.Sound.set_volume(wrong,0.25)
 pygame.mixer.Sound.set_volume(unlocked,0.5)
-screen_width,screen_height = pygui.size() #The size of the computer screen
-screen_height //= 2
-screen_height = int(screen_height)
-screen_width //= 2
-screen_width = int(screen_width)
-Screen = pygame.display.set_mode((screen_width, screen_height),pygame.RESIZABLE) #Create the game window
+Screen = pygame.display.set_mode((0, 0),pygame.RESIZABLE) #Create the game window
 user32.ShowWindow(user32.GetForegroundWindow(), 3) #Maximizes the window
 for event in pygame.event.get(): #Sets the new screen size
     if event.type == pygame.VIDEORESIZE:
@@ -139,9 +135,12 @@ Regen = False #If the player regenerates health
 Follow = False #If the player automatically follows the computer
 LevelSelect = False #If the player can choose any level
 CheatCodeIndex = 0
-Controls = ["mouse",pygame.K_UP,pygame.K_DOWN,pygame.K_LEFT,pygame.K_RIGHT,pygame.K_SPACE,pygame.K_ESCAPE,pygame.K_b,pygame.K_a,pygame.K_y,pygame.K_RETURN,"click"]
-DebugCheatCode = [1,1,2,2,3,4,3,4,7,8,10]
-LevelSelectCheatCode = [1,2,3,4,9,10]
+ControlsFile = open(Directory+'\Data\Controls.dat','rb')
+Controls = pickle.load(ControlsFile)
+ControlsFile.close()
+Controls = Convert(Controls)
+DebugCheatCode = ['Up','Up','Down','Down','Left','Right','Left','Right','B','A','Enter']
+LevelSelectCheatCode = ['Up','Down','Left','Right','Y','Enter']
 
 class Blast: #The class for the player's energy blasts
     def __init__(self,speed,dmg,img):
@@ -252,7 +251,7 @@ class LevelButton():
             global Cursor, Cursor1
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in events:
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     global ComputerLevel
                     ComputerLevel = self.level #Set the computers level to the same as the button's
                     GameLoop() #Start the game
@@ -272,7 +271,7 @@ class PlayerButton():
             global Cursor, Cursor1
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     global PlayerData
                     PlayerData = Player.LoadPlayer(self.name) #Load the player data of the name of this button
                     ChooseLevel() #Open the choose level menu
@@ -288,7 +287,7 @@ class NewPlayer(): #A button that creates a new player
             global Cursor, Cursor1
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     typing = True
                     newname = "" #The name of the new player
                     while typing:
@@ -302,17 +301,17 @@ class NewPlayer(): #A button that creates a new player
                                 kill() #Close the window and stop the program
                             if event.type == pygame.VIDEORESIZE:
                                 Resize(event.size)
+                            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the player presses the back button
+                                ChoosePlayer() #Go back to the choose player menu
+                            if GetKey(event) and GetKey(event).items(0) >= Controls['Enter'].items(): #If the player presses the enter button
+                                if newname not in Player.GetPlayers() and len(newname) > 0: #If there is not a player with the entered name already and the name is not blank
+                                    Player.CreatePlayer(newname) #Create a player with the name entered
+                                    global PlayerData
+                                    PlayerData = Player.LoadPlayer(newname) #Load that new player's data
+                                    ChooseLevel() #Open the choose level menu
                             if event.type == pygame.KEYDOWN: #If a key is being pressed
-                                if event.key == pygame.K_ESCAPE: #If the player presses the escape key
-                                    ChoosePlayer() #Go back to the choose player menu
-                                elif event.key == pygame.K_BACKSPACE: #If the player pressed the backspace key
+                                if event.key == pygame.K_BACKSPACE: #If the player pressed the backspace key
                                     newname = newname[:-1] #Delete the last character in the newname
-                                elif event.key == pygame.K_RETURN: #If the player presses the enter key
-                                    if newname not in Player.GetPlayers() and len(newname) > 0: #If there is not a player with the entered name already and the name is not blank
-                                        Player.CreatePlayer(newname) #Create a player with the name entered
-                                        global PlayerData
-                                        PlayerData = Player.LoadPlayer(newname) #Load that new player's data
-                                        ChooseLevel() #Open the choose level menu
                                 else:
                                     if len(newname) < 15: #If the length of the name is less than 15
                                         newname += event.unicode #Add whatever key the user just pressed to the name
@@ -335,12 +334,12 @@ class TextButton(): #Exits to the main menu from the choose level screen
             global Cursor, Cursor1
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in events:
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     self.function() #Trigger the button's function
         Screen.blit(player,(screen_width*self.x,screen_height*self.y))
         
 def Resize(Size):
-    global Screen, screen_width, screen_height, aspect_ratio, MechImg, EMechImg, Mech_Img, EMech_Img, Blasts, EBlasts, M_Img, MImg, EM_Img, EMImg, Cursor, Cursor0
+    global Screen, screen_width, screen_height, aspect_ratio, MechImg, EMechImg, Mech_Img, EMech_Img, Blasts, EBlasts, M_Img, MImg, EM_Img, EMImg
     w,h = Size
     if w < 400: #If the screens width is less than 800
         w = 400 #Set it to 800
@@ -385,10 +384,9 @@ def wait(t): #A function that makes the program sleep while still allowing the u
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE: #If the player hits space return false so that the intro will be skipped
-                    return False
-                    t = 0
+            if GetKey(event) and (GetKey(event).items() >= Controls['Shoot'].items() or GetKey(event).items() >= Controls['Back'].items()): #If the player presses the shoot button or the back button skip the intro
+                return False
+                t = 0
     return True
   
 def change_volume(start,change):
@@ -409,7 +407,18 @@ def update_volume():
     pickle.dump(Settings,SettingsFile) #Save the new settings in the file
     SettingsFile.close()
 
+def CheckForJoystick():
+    for key, value in Controls.items():
+        if value['type'] == 'joystick' or value['type'] == 'button' or value['type'] == 'hat':
+            try:
+                joystick = pygame.joystick.Joystick(value['joystick'])
+                if not joystick.get_init(): joystick.init()
+                return True
+            except:
+                return False
+
 def Intro(): #The intro animation
+    CheckForJoystick()
     pygame.mixer.music.load(Directory+'\Sounds\Menu\intro.wav') #Load the intro music
     pygame.mixer.music.play(loops=0, start=0_0) #Play the intro music
     playing = wait(0.01)
@@ -493,24 +502,26 @@ class MenuButton():
             global Cursor, Cursor1
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items(): #If the player clicks this button run its function
+                    self.function()
+                elif self.text == 'settings' and Controls['Click']['type'] != 'click' and Controls['Click']['type'] != 'key' and not CheckForJoystick() and event.type == pygame.MOUSEBUTTONDOWN: #If this is the settings button and the click button is on a controller that is disconnected and the player clicks the mouse open settings
                     self.function()
         Screen.blit(back,(screen_width/3.5+screen_width*0.004,screen_height*self.y+screen_height*.004))
         Screen.blit(front,(screen_width/3.5,screen_height*self.y))
         
-def ControllerHelp(joystick):
-    joystick.init()
-    y = joystick.get_axis(0)
-    x = joystick.get_axis(1)
-    if round(x) == 1:
-        pygame.mouse.set_pos(pygame.mouse.get_pos()[0]-10,pygame.mouse.get_pos()[1])
-    elif round(x) == -1:
-        pygame.mouse.set_pos(pygame.mouse.get_pos()[0]+10,pygame.mouse.get_pos()[1])
-    if round(y) == 1:
-        pygame.mouse.set_pos(pygame.mouse.get_pos()[0],pygame.mouse.get_pos()[1]+10)
-    elif round(y) == -1:
-        pygame.mouse.set_pos(pygame.mouse.get_pos()[0],pygame.mouse.get_pos()[1]-10)
-    joystick.quit()
+def ControllerHelp(keybind):
+    try:
+        joystick = pygame.joystick.Joystick(keybind['joystick'])
+        if not joystick.get_init(): joystick.init()
+        xaxis, yaxis = keybind['axi']
+        x = joystick.get_axis(xaxis)
+        y = joystick.get_axis(yaxis)
+        if round(x,1) != 0:
+            pygame.mouse.set_pos(pygame.mouse.get_pos()[0]+(25*x),pygame.mouse.get_pos()[1])
+        if round(y,1) != 0:
+            pygame.mouse.set_pos(pygame.mouse.get_pos()[0],pygame.mouse.get_pos()[1]+(25*y))
+    except:
+        return
         
 def StartMultiplayer():
     global Screen, aspect_ratio, screen_width, screen_height
@@ -520,6 +531,7 @@ def StartMultiplayer():
     
 def MenuLoop(): #The function that runs the main menu
     global CheatCodeIndex, Cursor, Cursor0
+    CheckForJoystick()
     CheatCodeIndex = 0
     inMenu = True #If it should stay in the menu
     pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
@@ -541,29 +553,27 @@ def MenuLoop(): #The function that runs the main menu
             button.update()
         Screen.blit(Cursor, pygame.mouse.get_pos())
         pygame.display.update() 
-        if Controls[0] != "mouse":
-            ControllerHelp(Controls[0])
+        if Controls['Mouse']['type'] == 'joystick':
+            ControllerHelp(Controls['Mouse'])
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            global Debug
-            if event.type == pygame.KEYDOWN:
-                #if event.key == pygame.K_TAB:
-                    #Controls[0] = Controllers.GetController()
-                global DebugCheatCode
-                if event.key == Controls[DebugCheatCode[CheatCodeIndex]]:
-                    CheatCodeIndex +=1
-                    pygame.mixer.Sound.play(ding)
-                    if CheatCodeIndex == len(DebugCheatCode):
-                        Debug = not Debug
-                        CheatCodeIndex = 0
-                        pygame.mixer.Sound.play(unlocked)
-                else:
-                    if CheatCodeIndex > 0:
-                        CheatCodeIndex = 0
-                        pygame.mixer.Sound.play(wrong)
+            global Debug, DebugCheatCode
+            if GetKey(event) and GetKey(event).items() >= Controls[DebugCheatCode[CheatCodeIndex]].items():
+                CheatCodeIndex += 1
+                pygame.mixer.Sound.play(ding)
+                if CheatCodeIndex == len(DebugCheatCode):
+                    Debug = not Debug
+                    CheatCodeIndex = 0
+                    pygame.mixer.Sound.play(unlocked)
+            elif GetKey(event):
+                if CheatCodeIndex > 0:
+                    CheatCodeIndex = 0
+                    pygame.mixer.Sound.play(wrong)
+            if Controls['Click']['type'] != 'click' and Controls['Click']['type'] != 'key' and event.type == pygame.MOUSEBUTTONDOWN: #If the click button is on a controller and the player clicks with the mouse
+                CheckForJoystick() #Check to see if the controller is connected and load it
         Clock.tick(30)
         
 def ChoosePlayer():
@@ -584,19 +594,20 @@ def ChoosePlayer():
             button.update()
         Screen.blit(Cursor, pygame.mouse.get_pos())
         pygame.display.update()
+        if Controls['Mouse']['type'] == 'joystick':
+            ControllerHelp(Controls['Mouse'])
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN: #If a key is being pressed
-                if event.key == pygame.K_ESCAPE: #If the escape key is being pressed
-                    MenuLoop() #Go back to the main menu
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the player presses the back button
+                MenuLoop() #Go back to the main menu
         Clock.tick(30)
         
 def UpgradeMenu():        
     global PlayerData
-    Size = Upgrade.Main(Screen,PlayerData['Name'],MechImg,Mech_Img,aspect_ratio,screen_width,screen_height)
+    Size = Upgrade.Main(Screen,PlayerData['Name'],MechImg,Mech_Img,aspect_ratio,screen_width,screen_height,Controls)
     try:
         PlayerData = Player.LoadPlayer(PlayerData['Name'])
         Resize(Size)
@@ -633,22 +644,22 @@ def ChooseLevel():
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            global LevelSelect
-            if event.type == pygame.KEYDOWN:
-                global LevelSelectCheatCode
-                if event.key == Controls[LevelSelectCheatCode[CheatCodeIndex]]:
-                    CheatCodeIndex +=1
-                    pygame.mixer.Sound.play(ding)
-                    if CheatCodeIndex == len(LevelSelectCheatCode):
-                        LevelSelect = not LevelSelect
-                        CheatCodeIndex = 0
-                        pygame.mixer.Sound.play(unlocked)
-                else:
-                    if CheatCodeIndex > 0:
-                        CheatCodeIndex = 0
-                        pygame.mixer.Sound.play(wrong)
+            global LevelSelect, LevelSelectCheatCode
+            if GetKey(event) and GetKey(event).items() >= Controls[LevelSelectCheatCode[CheatCodeIndex]].items():
+                CheatCodeIndex +=1
+                pygame.mixer.Sound.play(ding)
+                if CheatCodeIndex == len(LevelSelectCheatCode):
+                    LevelSelect = not LevelSelect
+                    CheatCodeIndex = 0
+                    pygame.mixer.Sound.play(unlocked)
+            elif GetKey(event):
+                if CheatCodeIndex > 0:
+                    CheatCodeIndex = 0
+                    pygame.mixer.Sound.play(wrong)
         Screen.blit(Cursor, pygame.mouse.get_pos())
         pygame.display.update()
+        if Controls['Mouse']['type'] == 'joystick':
+            ControllerHelp(Controls['Mouse'])
         Clock.tick(30)
 
 def GameLoop(): #The function that runs the game
@@ -787,28 +798,27 @@ def GameEventHandler(): #Handles the events during the game
             kill() #Close the window and stop the program
         if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-        if event.type == pygame.KEYDOWN: #If a key is being pressed
-            if event.key == pygame.K_SPACE: #If that key is space
-                if not Reloading: #If the mech is not reloading
-                    Blasts.append(Blast(PlayerData['BlastSpeed'],PlayerData['Damage'],BlastImg)) #Create a blast with the speed of BlastSpeed dmg and size of BlastDmg and with the image of BlastImg
-                    pygame.mixer.Sound.play(lazer) #Play the lazer blast sound effect
-                    Reloading = True #Set reloading to true
-            elif event.key == pygame.K_ESCAPE: #If the player presses escape
-                Pause() #Pause the game
-            elif (event.key == pygame.K_UP or event.key == pygame.K_w) and PlayerPosition > .1: #If the player presses the up arrow and their mech is not at the top
-                PlayerPosition -= PlayerData['MoveSpeed']/1000 #Move their mech upward at their move speed
-            elif (event.key == pygame.K_DOWN or event.key == pygame.K_s) and PlayerPosition < .8: #If the player presses the down arrow and their mech is not at the bottom
-                PlayerPosition += PlayerData['MoveSpeed']/1000 #Move their mech downward at their move speed
-            global Debug
-            if Debug:
-                if event.key == pygame.K_1:
-                    ShootLock = not ShootLock
-                elif event.key == pygame.K_2:
-                    global Regen
-                    Regen = not Regen
-                elif event.key == pygame.K_3:
-                    global Follow
-                    Follow = not Follow
+        if GetKey(event) and GetKey(event).items() >= Controls['Shoot'].items(): #If the player presses the shoot button
+            if not Reloading: #If the mech is not reloading
+                Blasts.append(Blast(PlayerData['BlastSpeed'],PlayerData['Damage'],BlastImg)) #Create a blast with the speed of BlastSpeed dmg and size of BlastDmg and with the image of BlastImg
+                pygame.mixer.Sound.play(lazer) #Play the lazer blast sound effect
+                Reloading = True #Set reloading to true
+        elif GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the player presses back button
+            Pause() #Pause the game
+        elif GetKey(event) and GetKey(event).items() >= Controls['Up'].items() and PlayerPosition > .1: #If the player presses the up button and their mech is not at the top
+            PlayerPosition -= PlayerData['MoveSpeed']/1000 #Move their mech upward at their move speed
+        elif GetKey(event) and GetKey(event).items() >= Controls['Down'].items() and PlayerPosition < .8: #If the player presses the down button and their mech is not at the bottom
+            PlayerPosition += PlayerData['MoveSpeed']/1000 #Move their mech downward at their move speed
+        global Debug
+        if Debug and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_1:
+                ShootLock = not ShootLock
+            elif event.key == pygame.K_2:
+                global Regen
+                Regen = not Regen
+            elif event.key == pygame.K_3:
+                global Follow
+                Follow = not Follow
                     
 def DrawScreen(): #Draws the screen
     Screen.fill(Black) #Resets the screen to black
@@ -845,6 +855,7 @@ def DrawScreen(): #Draws the screen
     pygame.display.update() #Updates the screen so the user can see the new screen
     
 def Pause():
+    CheckForJoystick()
     paused = True
     s = Screen.copy()
     global Cursor, Cursor0, Cursor1
@@ -860,13 +871,13 @@ def Pause():
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             back = font.render("Back To Game", False, DarkOrange, Orange)
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     paused = False #Unpause the game
         if screen_width/2-menu.get_width()/2 < mouse[0] < screen_width/2+menu.get_width()/2 and screen_height/2 < mouse[1] < screen_height/2+menu.get_height(): #If the mouse is hovering over the menu button
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             menu = font.render("Exit To Menu", False, DarkOrange, Orange)
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     #Return to the choose level menu
                     Blasts.clear()
                     EBlasts.clear()
@@ -879,11 +890,12 @@ def Pause():
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN: #If a key is being pressed
-                if event.key == pygame.K_ESCAPE: #If that key is escape
-                    paused = False #Unpause the game
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the back button is pressed
+                paused = False #Unpause the game
         Screen.blit(Cursor,mouse)
         pygame.display.update()
+        if Controls['Mouse']['type'] == 'joystick':
+            ControllerHelp(Controls['Mouse'])
         Clock.tick(30)
         
 def Win(): #Displays the win screen
@@ -923,9 +935,8 @@ def Win(): #Displays the win screen
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN: #If a key is being pressed
-                if event.key == pygame.K_ESCAPE:
-                    ChooseLevel() #Returns to the choose level menu
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the back button is pressed
+                ChooseLevel() #Returns to the choose level menu
         Clock.tick(10)
     
 def Lose(): #Displays the game over screen
@@ -962,19 +973,19 @@ def Lose(): #Displays the game over screen
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN: #If a key is being pressed
-                if event.key == pygame.K_ESCAPE:
-                    ChooseLevel() #Returns to the choose level menu
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the back button is pressed
+                ChooseLevel() #Returns to the choose level menu
         Clock.tick(10)
         
 def SettingsLoop():
+    CheckForJoystick()
     pygame.mixer.music.load(Directory+'\Sounds\Menu\Videogame2.wav') #Load the menu music
     pygame.mixer.music.play(loops=-1, start=0_0) #Play the menu music and make it loop indefinitely
     inSettings = True
     arrow0 = pygame.image.load(Directory+'\Images\Arrow0.png')
     arrow1 = pygame.image.load(Directory+'\Images\Arrow1.png')
+    global screen_height, screen_width, Cursor, Cursor0, Cursor1, Controls
     while inSettings:
-        global screen_height, screen_width, Cursor, Cursor0, Cursor1
         Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25)))
         mouse = pygame.mouse.get_pos()
         Screen.fill(Black) #Blacks out the screen
@@ -984,6 +995,8 @@ def SettingsLoop():
         effectfront = optionfont.render("Effect Volume", False, Cyan)
         backback = optionfont.render("Back", False, Red)
         backfront = optionfont.render("Back", False, Cyan)
+        controlsback = optionfont.render("Controls", False, Red)
+        controlsfront = optionfont.render("Controls", False, Cyan)
         numberfont = pygame.font.SysFont('Arial Black', int(50*(screen_height/600)),True) #Set a font to arial black size 50 and bold
         masternumber = numberfont.render(str(Settings['Master']),False,Cyan)
         musicnumber = numberfont.render(str(Settings['Music']),False,Cyan)
@@ -996,7 +1009,7 @@ def SettingsLoop():
             Screen.blit(img,(screen_width*.6,screen_height*.2))
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     Settings['Master'] = change_volume(Settings['Master'], -1)
                     update_volume()
         else:
@@ -1010,7 +1023,7 @@ def SettingsLoop():
             Screen.blit(img,(screen_width*.8,screen_height*.2))
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     Settings['Master'] = change_volume(Settings['Master'], +1)
                     update_volume()
         else:
@@ -1024,7 +1037,7 @@ def SettingsLoop():
             Screen.blit(img,(screen_width*.6,screen_height*.3))
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     Settings['Music'] = change_volume(Settings['Music'], -1)
                     update_volume()
         else:
@@ -1038,7 +1051,7 @@ def SettingsLoop():
             Screen.blit(img,(screen_width*.8,screen_height*.3))
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     Settings['Music'] = change_volume(Settings['Music'], +1)
                     update_volume()
         else:
@@ -1052,7 +1065,7 @@ def SettingsLoop():
             Screen.blit(img,(screen_width*.6,screen_height*.4))
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     Settings['Effects'] = change_volume(Settings['Effects'], -1)
                     update_volume()
         else:
@@ -1066,7 +1079,7 @@ def SettingsLoop():
             Screen.blit(img,(screen_width*.8,screen_height*.4))
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     Settings['Effects'] = change_volume(Settings['Effects'], 1)
                     update_volume()
         else:
@@ -1074,15 +1087,34 @@ def SettingsLoop():
             img = pygame.transform.flip(img, True, False)
             img = pygame.transform.scale(img, (int(screen_height*.1),int(screen_height*.1)))
             Screen.blit(img,(screen_width*.8,screen_height*.4)) 
-        if screen_width/10 < mouse[0] < (screen_width/10)+backfront.get_width() and screen_height*.9 < mouse[1] < screen_height*.9+backfront.get_height(): #If the mouse is hovering over this button switch its colors else draw it normally
+        if screen_width*.25 < mouse[0] < screen_width*.25+backfront.get_width() and screen_height*.9 < mouse[1] < screen_height*.9+backfront.get_height(): #If the mouse is hovering over this button switch its colors else draw it normally
             backback = optionfont.render("Back", False, Cyan)
             backfront = optionfont.render("Back", False, Red)
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     MenuLoop()
-        Screen.blit(backback,(screen_width*.1+screen_width*.004,screen_height*.9+screen_height*.004))
-        Screen.blit(backfront,(screen_width*.1,screen_height*.9))
+        if screen_width*.6 < mouse[0] < screen_width*.6+controlsfront.get_width() and screen_height*.9 < mouse[1] < screen_height*.9+controlsfront.get_height(): #If the mouse is hovering over this button switch its colors else draw it normally
+            controlsback = optionfont.render("Controls", False, Cyan)
+            controlsfront = optionfont.render("Controls", False, Red)
+            Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
+            for event in pygame.event.get():
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
+                    Resize(ControlMenu(Screen, aspect_ratio, screen_width, screen_height))
+                    ControlsFile = open(Directory+'\Data\Controls.dat','rb')
+                    Controls = pickle.load(ControlsFile)
+                    ControlsFile.close()
+                    Controls = Convert(Controls)
+                elif Controls['Click']['type'] != 'click' and Controls['Click']['type'] != 'key' and not CheckForJoystick() and event.type == pygame.MOUSEBUTTONDOWN: #If the click button is on a controller that is disconnected and the player clicks the mouse open controls settings
+                    Resize(ControlMenu(Screen, aspect_ratio, screen_width, screen_height))
+                    ControlsFile = open(Directory+'\Data\Controls.dat','rb')
+                    Controls = pickle.load(ControlsFile)
+                    ControlsFile.close()
+                    Controls = Convert(Controls)
+        Screen.blit(backback,(screen_width*.25+screen_width*.004,screen_height*.9+screen_height*.004))
+        Screen.blit(backfront,(screen_width*.25,screen_height*.9))
+        Screen.blit(controlsback,(screen_width*.6+screen_width*.004,screen_height*.9+screen_height*.004))
+        Screen.blit(controlsfront,(screen_width*.6,screen_height*.9))
         Screen.blit(masterfront,(screen_width*.2,screen_height*.2))
         Screen.blit(musicfront,(screen_width*.2,screen_height*.3))
         Screen.blit(effectfront,(screen_width*.2,screen_height*.4))
@@ -1091,6 +1123,8 @@ def SettingsLoop():
         Screen.blit(effectnumber,(screen_width*.68,screen_height*.4))
         Screen.blit(Cursor, pygame.mouse.get_pos())
         pygame.display.update() 
+        if Controls['Mouse']['type'] == 'joystick':
+            ControllerHelp(Controls['Mouse'])
         for event in pygame.event.get(): #For all of the events(mouse/key actions) that are currently happening
             if event.type == pygame.QUIT: #If the user clicked the close button
                 kill() #Close the window and stop the program

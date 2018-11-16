@@ -7,6 +7,7 @@ import os
 from time import sleep
 import pygame
 import Player
+from Controls import GetKey
 Directory = os.getcwd()
 Clock = pygame.time.Clock()
 Points = 0
@@ -42,6 +43,7 @@ arrow1 = pygame.image.load(Directory+'\Images\Arrow1.png')
 Cursor0 = pygame.image.load(Directory+'/Images/Cursor0.png') #Loads the arrow cursor
 Cursor1 = pygame.image.load(Directory+'/Images/Cursor1.png') #Loads the pointer cursor
 Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25))) #Sets cursor to arrow
+Controls = None
 
 
 class Button():
@@ -63,7 +65,7 @@ class Button():
                 Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
                 self.screen.blit(img,(screen_width*.6,screen_height*self.y))
                 for event in pygame.event.get():
-                    if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                         self.value -= self.increment
                         Points += 1
             else:
@@ -80,7 +82,7 @@ class Button():
                 self.screen.blit(img,(screen_width*.725,screen_height*self.y)) 
                 Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
                 for event in pygame.event.get():
-                    if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                         self.value += self.increment
                         Points -= 1
             else:
@@ -108,7 +110,7 @@ class ColorButton():
             self.screen.blit(img,(screen_width*.6,screen_height*self.y))
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     if self.colorindex > 0:
                         self.colorindex -= 1
                         self.value = Colors[self.colorindex]
@@ -131,7 +133,7 @@ class ColorButton():
             self.screen.blit(img,(screen_width*.725,screen_height*self.y))
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25))) 
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     if self.colorindex < len(Colors)-1:
                         self.colorindex += 1
                         self.value = Colors[self.colorindex]
@@ -158,11 +160,6 @@ def wait(t): #A function that makes the program sleep while still allowing the u
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE: #If the player hits space return false so that the intro will be skipped
-                    return False
-                    t = 0
-    return True
     
 def Colorize(image, color):
     m = pygame.mask.from_surface(image, 0)
@@ -194,7 +191,7 @@ def Delete(Screen,PlayerName):
             yes = optionfont.render("Yes", False, Red, DarkRed)
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     Player.DeletePlayer(PlayerName)
                     choosing = False
                     global inMenu
@@ -203,7 +200,7 @@ def Delete(Screen,PlayerName):
             no = optionfont.render("No", False, Cyan, Blue)
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     choosing = False
         Screen.blit(yes,(screen_width*.4-yes.get_width(),screen_height*y))
         Screen.blit(no,(screen_width*.55,screen_height*y))
@@ -214,9 +211,8 @@ def Delete(Screen,PlayerName):
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    choosing = False
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items():
+                choosing = False
  
 def Resize(Size):
     global Screen, screen_width, screen_height, aspect_ratio
@@ -237,10 +233,25 @@ def Resize(Size):
     screen_width = w
     screen_height = h
     Screen = pygame.display.set_mode((int(screen_width), int(screen_height)),pygame.RESIZABLE) #Resize the game window
-    
-def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
+
+def ControllerHelp(keybind):
+    try:
+        joystick = pygame.joystick.Joystick(keybind['joystick'])
+        if not joystick.get_init(): joystick.init()
+        xaxis, yaxis = keybind['axi']
+        x = joystick.get_axis(xaxis)
+        y = joystick.get_axis(yaxis)
+        if round(x,1) != 0:
+            pygame.mouse.set_pos(pygame.mouse.get_pos()[0]+(25*x),pygame.mouse.get_pos()[1])
+        if round(y,1) != 0:
+            pygame.mouse.set_pos(pygame.mouse.get_pos()[0],pygame.mouse.get_pos()[1]+(25*y))
+    except:
+        return
+        
+def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h,controls):
     Data = Player.LoadPlayer(PlayerName)
-    global Points, aspect_ratio, screen_width, screen_height, inMenu, Cursor, Cursor0
+    global Points, aspect_ratio, screen_width, screen_height, inMenu, Cursor, Cursor0, Controls
+    Controls = controls
     aspect_ratio = a
     screen_width = w
     screen_height = h
@@ -255,6 +266,8 @@ def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
     Buttons.append(Button(Screen,.575,Data['BlastSpeed'],1,'BlastSpeed',Data['Level']/10))
     inMenu = True
     while inMenu:
+        if Controls['Mouse']['type'] == 'joystick':
+            ControllerHelp(Controls['Mouse'])
         Cursor = pygame.transform.scale(Cursor0, (int(screen_height/25), int(screen_height/25)))
         Screen.fill((0,0,0))
         for button in Buttons:
@@ -290,7 +303,7 @@ def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
             save = myfont.render('Save', False, DarkOrange, Orange)
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     for button in Buttons:
                         Data[button.index] = button.value
                     Data['Points'] = Points
@@ -298,18 +311,18 @@ def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
                     inMenu = False
                     Mech_Img = Colorize(MechBackImg, Data['Color'])
                     wait(0.5)
-                    Main(Screen,Data['Name'],MechImg,Mech_Img,aspect_ratio,screen_width,screen_height)
+                    Main(Screen,Data['Name'],MechImg,Mech_Img,aspect_ratio,screen_width,screen_height,controls)
         if screen_width*.5 <= mouse[0] <= screen_width*.5+save.get_width() and screen_height*.9 <= mouse[1] <= screen_height*.9+save.get_height():
             delete = myfont.render('Delete', False, DarkOrange, Orange)
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     Delete(Screen,PlayerName)
         if screen_width*.25 <= mouse[0] <= screen_width*.25+save.get_width() and screen_height*.9 <= mouse[1] <= screen_height*.9+save.get_height():
             back = myfont.render('Back', False, DarkOrange, Orange)
             Cursor = pygame.transform.scale(Cursor1, (int(screen_height/25), int(screen_height/25)))
             for event in pygame.event.get():
-                if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if GetKey(event) and GetKey(event).items() >= Controls['Click'].items():
                     inMenu = False
         Screen.blit(save,(screen_width*.75,screen_height*.9))
         Screen.blit(delete,(screen_width*.5,screen_height*.9))
@@ -321,9 +334,8 @@ def Main(Screen,PlayerName,MechImg,Mech_Img,a,w,h):
                 kill() #Close the window and stop the program
             if event.type == pygame.VIDEORESIZE:
                 Resize(event.size)
-            if event.type == pygame.KEYDOWN: #If a button gets pressed
-                if event.key == pygame.K_ESCAPE: #If that button is the escape key
-                    Screen.fill(Black)
-                    inMenu = False
+            if GetKey(event) and GetKey(event).items() >= Controls['Back'].items(): #If the back button is pressed
+                Screen.fill(Black)
+                inMenu = False
         Clock.tick(30)
     return screen_width, screen_height
